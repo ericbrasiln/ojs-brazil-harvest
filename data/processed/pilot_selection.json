@@ -1,0 +1,149 @@
+[
+  {
+    "major_version": "OJS 2.x",
+    "version": "2.4.8.1",
+    "oai_url": "https://periodicos.utfpr.edu.br/index/oai",
+    "repository_name": "Portal de Periódicos Científicos da UTFPR (PERI)",
+    "total_record_count": 362
+  },
+  {
+    "major_version": "OJS 2.x",
+    "version": "2.4.8.2",
+    "oai_url": "https://periodicos.ifsertao-pe.edu.br/ojs2/index.php/index/oai",
+    "repository_name": "Portal de Periódicos do IFSertãoPE",
+    "total_record_count": 1163
+  },
+  {
+    "major_version": "OJS 2.x",
+    "version": "2.4.8.5",
+    "oai_url": "https://revistas.faculdadefacit.edu.br/index.php/index/oai",
+    "repository_name": "Revistas da FACIT",
+    "total_record_count": 2089
+  },
+  {
+    "major_version": "OJS 3.0.x",
+    "version": "3.0.2.0",
+    "oai_url": "https://sol.sbc.org.br/index.php/index/oai",
+    "repository_name": "Portal de Conteúdo da Sociedade Brasileira de Computação",
+    "total_record_count": 139
+  },
+  {
+    "major_version": "OJS 3.0.x",
+    "version": "3.0.2.0",
+    "oai_url": "https://sol.sbc.org.br/index.php/index/oai",
+    "repository_name": "Portal de Conteúdo da Sociedade Brasileira de Computação",
+    "total_record_count": 330
+  },
+  {
+    "major_version": "OJS 3.0.x",
+    "version": "3.0.2.0",
+    "oai_url": "https://revista.ugb.edu.br/index.php/index/oai",
+    "repository_name": "Revistas UGB",
+    "total_record_count": 345
+  },
+  {
+    "major_version": "OJS 3.1.x",
+    "version": "3.1.2.1",
+    "oai_url": "https://periodicos.ufms.br/index.php/index/oai",
+    "repository_name": "Portal de Periódicos da UFMS",
+    "total_record_count": 586
+  },
+  {
+    "major_version": "OJS 3.1.x",
+    "version": "3.1.2.4",
+    "oai_url": "https://revistas.ufpel.edu.br/index.php/index/oai",
+    "repository_name": "Portal de Periódicos Científicos da UFPel",
+    "total_record_count": 783
+  },
+  {
+    "major_version": "OJS 3.1.x",
+    "version": "3.1.2.1",
+    "oai_url": "http://periodicos.pucminas.br/index.php/index/oai",
+    "repository_name": "Portal de Periódicos Eletrônicos da PUC Minas",
+    "total_record_count": 913
+  },
+  {
+    "major_version": "OJS 3.2.x",
+    "version": "3.2.1.1",
+    "oai_url": "https://seer.upf.br/index.php/index/oai",
+    "repository_name": "Sistema Eletrônico de Editoração de Revistas/OJS - UPF",
+    "total_record_count": 354
+  },
+  {
+    "major_version": "OJS 3.2.x",
+    "version": "3.2.1.3",
+    "oai_url": "https://revistas.pucsp.br/index.php/index/oai",
+    "repository_name": "Portal de Revistas Eletrônicas da PUC-SP",
+    "total_record_count": 306
+  },
+  {
+    "major_version": "OJS 3.2.x",
+    "version": "3.2.1.3",
+    "oai_url": "https://revistas.unifenas.br/index.php/index/oai",
+    "repository_name": "Portal de Revistas da UNIFENAS",
+    "total_record_count": 228
+  },
+  {
+    "major_version": "OJS 3.3.x",
+    "version": "3.3.0.21",
+    "oai_url": "https://revistas.ufrj.br/index.php/index/oai",
+    "repository_name": "Portal de Periódicos da UFRJ",
+    "total_record_count": 404
+  },
+  {
+    "major_version": "OJS 3.3.x",
+    "version": "3.3.0.21",
+    "oai_url": "https://www.producaoonline.org.br/index/oai",
+    "repository_name": "Revista Produção Online",
+    "total_record_count": 1204
+  },
+  {
+    "major_version": "OJS 3.3.x",
+    "version": "3.3.0.15",
+    "oai_url": "https://www.dialogosmediterranicos.com.br/index.php/index/oai",
+    "repository_name": "Dialogos Mediterrânicos",
+    "total_record_count": 371
+  },
+  {
+    "major_version": "OJS 3.4.x",
+    "version": "3.4.0.9",
+    "oai_url": "https://periodicos.ufes.br/index/oai",
+    "repository_name": "Periódicos da UFES",
+    "total_record_count": 307
+  },
+  {
+    "major_version": "OJS 3.4.x",
+    "version": "3.4.0.8",
+    "oai_url": "https://seer.ufu.br/index.php/index/oai",
+    "repository_name": "Portal de Periódicos UFU - PPUFU",
+    "total_record_count": 2090
+  },
+  {
+    "major_version": "OJS 3.4.x",
+    "version": "3.4.0.4",
+    "oai_url": "https://revistas.usp.br/index/oai",
+    "repository_name": "Portal de Revistas da USP",
+    "total_record_count": 2111
+  },
+  {
+    "major_version": "OJS 3.5.x",
+    "version": "3.5.0.1",
+    "oai_url": "https://revista.fatectq.edu.br/index/oai",
+    "repository_name": "",
+    "total_record_count": 822
+  },
+  {
+    "major_version": "OJS 3.5.x",
+    "version": "3.5.0.1",
+    "oai_url": "https://www.anais.ueg.br/index.php/index/oai",
+    "repository_name": "Portal de Anais de Eventos da Universidade Estadual de Goiás",
+    "total_record_count": 507
+  },
+  {
+    "major_version": "OJS 3.5.x",
+    "version": "3.5.0.1",
+    "oai_url": "https://publicacoes.amigosdanatureza.org.br/index.php/index/oai",
+    "repository_name": "Portal de Periódicos da ANAP",
+    "total_record_count": 506
+  }
+]
