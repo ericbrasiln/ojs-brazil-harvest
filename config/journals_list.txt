@@ -1,0 +1,2 @@
+# Uma URL por linha
+# Formato: https://periodicos.exemplo.br/index.php/nomeRevista
