@@ -1,28 +1,28 @@
 # Resultados da Coleta OAI-PMH — Amostra de Validação
 
-**Período:** 2026-05-31 a 2026-06-03  
+**Período:** 2026-05-31 a 2026-06-04  
 **Dataset fonte:** PKP Beacon v6 (6.086 OJS Brasil, 5.861 responsivos)  
-**Scripts:** `scripts/harvest_batch.py` (P1), `scripts/harvest_by_set.py` (P2)
+**Scripts:** `scripts/harvest_batch.py` (P1), `scripts/harvest_by_set.py` (P2), `scripts/retry_ssl.py` (SSL)
 
 ---
 
-## Resumo Consolidado (Passada 1 + Passada 2)
+## Resumo Consolidado
 
-| Métrica | Passada 1 (integral) | Passada 2 (por set) | Total |
-|---------|---------------------|---------------------|-------|
-| Targets tentados | 221 URLs | 2.361 sets (59 portais) | — |
-| ✅ Sucesso | 70 (32%) | 1.828 (77%) | 1.898 |
-| ⏱ Timeout | 63 (28%) | 307 (13%) | 370 |
-| ❌ Erro | 88 (40%) | 226 (10%) | 314 |
-| **Registros coletados** | **48.298** | **599.684** | **647.982** |
+| Métrica | P1 (integral) | P2 (por set) | Retry SSL | Total |
+|---------|---------------|---------------|-----------|-------|
+| Targets tentados | 221 URLs | 2.361 sets (59 portais) | 29 URLs (37 targets) | — |
+| ✅ Sucesso | 70 (32%) | 1.828 (77%) | 37 (100% conectados) | — |
+| ⏱ Timeout | 63 (28%) | 307 (13%) | 0 | — |
+| ❌ Erro | 88 (40%) | 226 (10%) | 22 (servidor) | — |
+| **Registros coletados** | **48.298** | **599.684** | **54.948** | **702.930** |
 
 | Métrica de disco | Valor |
 |------------------|-------|
-| Registros em disco | 856.085 |
-| Arquivos JSON | 2.097 |
-| Tamanho em disco | 3,5 GB |
+| Registros em disco | ~910.000 |
+| Arquivos JSON | 2.100+ |
+| Tamanho em disco | ~4 GB |
 | Potencial do dataset PKP | 2.445.213 registros |
-| Cobertura do potencial | **35%** |
+| Cobertura do potencial | **~37%** |
 
 ---
 
@@ -33,31 +33,25 @@
 | Periódicos isolados | 166 | 69 | **42%** |
 | Portais multi-revista | 55 | 1 | **2%** |
 
-**Conclusão:** a coleta integral serve para periódicos isolados, mas é ineficaz para portais. A Passada 2 por set confirmou que os mesmos portais que falhavam na P1 rendem 77% de sucesso quando coletados set por set.
+Quase todo o sucesso da P1 vem de periódicos com instalação própria. A quase totalidade dos portais falha por timeout na coleta integral — confirmando a necessidade de coletar por set.
 
 ---
 
-## Evolução das coletas (Passada 1)
+## Retry SSL — Etapa 1
 
-| Run (seed) | Targets | OK | Erro | Timeout | Registros |
-|------------|---------|----|------|---------|-----------|
-| 130833 (s1, n5) | 5 | 3 | 1 | 1 | 4.065 |
-| 154841 (s2, n100) | 91 | 40 | 24 | 27 | 56.239 |
-| 192035 (s3, n200) | 144 | 60 | 49 | 35 | 59.363 |
-| 001302 (s4, n400) | 205 | 92 | 66 | 47 | 89.021 |
-| 055940 (s4, n400, resume) | 221 | 70 | 88 | 63 | 48.298 |
+29 URLs com erro SSL recuperadas via monkey-patch em `requests.Session.request`:
 
-Notas: cada run usa `--sample` com seeds diferentes, então as URLs não são as mesmas. A última run (055940) usou `--resume` e processou targets que não tinham sido tentados nas runs anteriores.
+| Status | Qtd | Observação |
+|--------|-----|------------|
+| ✅ Sucesso | 37 | 6 já existiam, 31 novos |
+| ❌ HTTP 500 (servidor) | 15 | Irrecuperável |
+| ❌ OAI-PMH error | 5 | Sets vazios |
+| ❌ SSL persistente | 1 | `portalgt.idp.edu.br` |
+| ❌ XML inválido | 1 | `coffeescience.ufla.br` |
 
----
+Top resultados: UFPE (23.246), Ufac (4.627), UNICENTRO (3.803), SPGG (3.316), UFRPE (3.258).
 
-## Passada 2 — Classificação dos portais
-
-| Categoria | Qtd | Descrição |
-|-----------|-----|-----------|
-| Todos sets OK | 6 | Coleta completa sem falhas |
-| Parcialmente OK | 46 | Alguns sets falharam, maioria OK |
-| 100% falha | 7 | Nenhum set coletado (incl. USP com 194 sets) |
+Detalhes em `docs/ssl_retry_results.md` e `docs/error_report.md`.
 
 ---
 

@@ -41,7 +41,8 @@ Para cada periódico com instalação própria (`n_journals == 1`):
 
 #### Fase 3 — Retry
 
-- SSL bypass para 17 URLs com certificado inválido
+- SSL bypass integrado (via `requests.Session.request` com `verify=False`); feature request em [ojs-scrape#9](https://github.com/ericbrasiln/ojs-scrape/issues/9)
+- Resultado: 54.948 registros recuperados de 29 URLs com SSL inválido
 - Timeout 600s para HTTP 102 e timeouts previos
 - Delay 2s para sets que falharam na Fase 1
 - Portais com rate limiting agressivo (ex.: USP): delay 5-10s, horário de madrugada
@@ -76,7 +77,7 @@ Baseado nos resultados da amostra (221 URLs + 2.361 sets):
 | Timeout em portais | 98% dos portais na coleta integral | Coletar por set (Fase 1) |
 | Timeout em isolados | ~14% | Retry com timeout 600s (Fase 3) |
 | HTTP 102 Processing | 15% (34/221) | Coletar por set ou timeout 600s |
-| SSL cert expirado/inválido | 8% (17/221) | Bypass SSL (Fase 3) |
+| SSL (certificado inválido) | 29 URLs (8% da amostra) | ✅ **Resolvido** — bypass via `requests.Session.request` com `verify=False`; 54.948 registros recuperados; feature request: [ojs-scrape#9](https://github.com/ericbrasiln/ojs-scrape/issues/9) |
 | ConnectTimeout | 6% (14/221) | Retry depois; registrar |
 | ConnectionError/DNS | 6% (14/221) | Registrar, skip (domínio morto) |
 | XML chars inválidos/Parse | 3% (7/221) | ojs-scrape trata automaticamente; alguns inescapáveis |
