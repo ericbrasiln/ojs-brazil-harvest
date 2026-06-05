@@ -15,8 +15,9 @@
 | Etapa 1 — SSL | 54.948 | 29 URLs antes inacessíveis |
 | Etapa 2a — Isolados | 8.589 | 1 URL (UEG) |
 | Etapa 2b — Portais | 453.884 | 511 sets, 1.946 skip (sem duplicação) |
-| **Total bruto** | **~1.165K** | |
-| **Registros únicos** | **~920K+** | 18% sobreposição entre sets |
+| Etapa 3 — P2 errors | 4.342 | 4 sets OK, 138 noRecordsMatch, 79 skip |
+| **Total bruto** | **~1.169K** | |
+| **Registros únicos** | **~925K+** | 18% sobreposição entre sets |
 
 | Métrica de disco | Valor |
 |------------------|-------|
