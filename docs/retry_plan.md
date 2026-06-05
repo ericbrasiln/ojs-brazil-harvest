@@ -11,10 +11,10 @@
 |-----------|-----|------------|-----------------|
 | P1 isolados: SSL | 29 | ✅ Resolvido | +54.948 registros |
 | P1 isolados: timeout/HTTP 102 | 36 | ✅ Resolvido | +8.589 (1 OK) |
+| P1 portais com erro | 63 | ✅ Resolvido | +453.884 (511 sets) |
 | P2 sets: erro (226) | 226 | Média | +20K-40K |
 | P2 sets: timeout não-USP (113) | 113 | Média | +10K-30K |
 | P2 sets: USP timeout (194) | 194 | Baixa | +50K-100K (difícil) |
-| P1 portais com erro | 63 | Média | tentar por set |
 | DNS/ConnectionError | 14 | Ignorar | 0 |
 | XML/Parse | 7 | Baixa | incerto |
 
@@ -51,18 +51,30 @@
 
 ---
 
-## Etapa 2b — Retry de Portais por Set (pendente)
+## Etapa 2b — Retry de Portais por Set ✅ CONCLUÍDA
 
-**O que fazer:**
-- Extrair os 63 portais com erro da P1/P2
-- Rodar `harvest_by_set.py` com `--resume` apenas nesses portais
-- Timeout 300s por set, delay 2s
+**Estratégia:** descobre sets via ListSets, pula sets já OK na P2, retry apenas em sets com erro ou novos.
 
-**Verificação:** comparar com sets já coletados na P2 (não duplicar)
+**Resultado:**
+
+| Métrica | Valor |
+|---------|-------|
+| Portais processados | 62 (15 ListSets falhou) |
+| Sets OK | 511 |
+| Sets com erro | 215 |
+| Sets skip (já OK na P2) | 1.946 |
+| **Registros novos** | **453.884** |
+
+**Lições:**
+- Deduplicação com P2 funciona: 1.946 sets pulados, zero duplicação
+- 15 portais com ListSets bloqueado (403, DNS, servidor morto)
+- 215 sets com erro (500, timeout, XML inválido)
+
+**Script:** `scripts/retry_portals_by_set.py`
 
 ---
 
-## Etapa 3 — Retry P2 sets com erro e timeout (226 + 113 não-USP)
+## Etapa 3 — Retry P2 sets com erro e timeout (pendente)
 
 **O que fazer:**
 - Extrair os 226 sets com erro e 113 com timeout (excluindo USP)
@@ -87,9 +99,9 @@
 
 ## Ordem de execução
 
-1. ~~**Etapa 1** (SSL)~~ — ✅ concluída (+54.948 registros)
-2. ~~**Etapa 2a** (isolados)~~ — ✅ concluída (+8.589 registros)
-3. **Etapa 2b** (portais por set) — próximo
-4. **Etapa 3** (P2 retry sets)
+1. ~~**Etapa 1** (SSL)~~ — ✅ +54.948 registros
+2. ~~**Etapa 2a** (isolados)~~ — ✅ +8.589 registros
+3. ~~**Etapa 2b** (portais por set)~~ — ✅ +453.884 registros
+4. **Etapa 3** (P2 retry sets) — próximo
 5. **Etapa 5** (investigar unclassified)
 6. **Etapa 4** (USP) — por último
