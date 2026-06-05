@@ -74,12 +74,26 @@
 
 ---
 
-## Etapa 3 — Retry P2 sets com erro e timeout (pendente)
+## Etapa 3 — Retry P2 sets com erro ✅ CONCLUÍDA
 
-**O que fazer:**
-- Extrair os 226 sets com erro e 113 com timeout (excluindo USP)
-- Executar `harvest_by_set.py` com `--timeout 300 --delay 2` apenas nesses sets
-- Implementar filtragem de sets específicos (não reprocessar os que já deram OK)
+**Estratégia:** retry de 221 sets que falharam na P2 e 2b, com SSL bypass + timeout 600s. Deduplicação tripla (P2 OK + 2b OK + arquivo no disco).
+
+**Resultado:**
+
+| Métrica | Valor |
+|---------|-------|
+| Sets processados | 221 |
+| ✅ OK | 4 |
+| ❌ Erro | 138 (maioria noRecordsMatch — sets vazios) |
+| ⏭️ Skip | 79 (já processados) |
+| **Registros novos** | **4.342** |
+
+**Lições:**
+- A maioria dos "erros" da P2 era `noRecordsMatch` (sets vazios) — não havia dados para recuperar
+- Erros permanentes de servidor (500, connection reset) não são recuperáveis
+- Apenas 4 sets com timeout na P2 resolveram com timeout 600s
+
+**Script:** `scripts/retry_p2_errors.py`
 
 ---
 
@@ -102,6 +116,6 @@
 1. ~~**Etapa 1** (SSL)~~ — ✅ +54.948 registros
 2. ~~**Etapa 2a** (isolados)~~ — ✅ +8.589 registros
 3. ~~**Etapa 2b** (portais por set)~~ — ✅ +453.884 registros
-4. **Etapa 3** (P2 retry sets) — próximo
-5. **Etapa 5** (investigar unclassified)
-6. **Etapa 4** (USP) — por último
+4. ~~**Etapa 3** (P2 retry errors)~~ — ✅ +4.342 registros
+5. **Etapa 4** (USP) — por último
+6. **Etapa 5** (investigar unclassified)
