@@ -138,7 +138,7 @@ def main():
             continue
 
         key = (url, spec)
-        if key not in seen:
+        if key not in seen and spec is not None:
             seen.add(key)
             retry_targets.append((url, spec, r.get('repository_name', ''), err[:80], 'P2'))
 
@@ -160,7 +160,7 @@ def main():
             continue
 
         key = (url, spec)
-        if key not in seen:
+        if key not in seen and spec is not None:
             seen.add(key)
             retry_targets.append((url, spec, r.get('repository_name', ''), err[:80], '2b'))
 
@@ -192,7 +192,8 @@ def main():
             continue
 
         # Triple dedup: also check file on disk
-        fname = f"{slugify(name)}__{slugify(spec.split(':')[-1] if ':' in spec else spec, max_len=30)}.json"
+        spec_slug = slugify(spec.split(':')[-1] if spec and ':' in spec else (spec or 'unknown'), max_len=30)
+        fname = f"{slugify(name)}__{spec_slug}.json"
         fpath = OUTPUT_DIR / fname
         if fpath.exists() and fpath.stat().st_size > 100:
             logger.info(f"[{idx}/{len(retry_targets)}] SKIP (file exists): {spec} @ {url[:50]}")
