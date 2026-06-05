@@ -1,61 +1,87 @@
 # Resultados da Coleta OAI-PMH — Amostra de Validação
 
-**Período:** 2026-05-31 a 2026-06-04  
+**Período:** 2026-05-31 a 2026-06-05  
 **Dataset fonte:** PKP Beacon v6 (6.086 OJS Brasil, 5.861 responsivos)  
-**Scripts:** `scripts/harvest_batch.py` (P1), `scripts/harvest_by_set.py` (P2), `scripts/retry_ssl.py` (SSL)
+**Scripts:** `harvest_batch.py`, `harvest_by_set.py`, `retry_ssl.py`, `retry_isolated.py`, `retry_portals_by_set.py`
 
 ---
 
 ## Resumo Consolidado
 
-| Métrica | P1 (integral) | P2 (por set) | Retry SSL | Total |
-|---------|---------------|---------------|-----------|-------|
-| Targets tentados | 221 URLs | 2.361 sets (59 portais) | 29 URLs (37 targets) | — |
-| ✅ Sucesso | 70 (32%) | 1.828 (77%) | 37 (100% conectados) | — |
-| ⏱ Timeout | 63 (28%) | 307 (13%) | 0 | — |
-| ❌ Erro | 88 (40%) | 226 (10%) | 22 (servidor) | — |
-| **Registros coletados** | **48.298** | **599.684** | **54.948** | **702.930** |
+| Fase | Registros | Detalhes |
+|------|-----------|---------|
+| P1 (integral) | 48.298 | 70 URLs OK de 221 |
+| P2 (por set) | 599.684 | 1.828 sets OK de 2.365 |
+| Etapa 1 — SSL | 54.948 | 29 URLs antes inacessíveis |
+| Etapa 2a — Isolados | 8.589 | 1 URL (UEG) |
+| Etapa 2b — Portais | 453.884 | 511 sets, 1.946 skip (sem duplicação) |
+| **Total bruto** | **~1.165K** | |
+| **Registros únicos** | **~920K+** | 18% sobreposição entre sets |
 
 | Métrica de disco | Valor |
 |------------------|-------|
-| Registros em disco | ~910.000 |
 | Arquivos JSON | 2.100+ |
 | Tamanho em disco | ~4 GB |
-| Potencial do dataset PKP | 2.445.213 registros |
-| Cobertura do potencial | **~37%** |
+| Potencial PKP Beacon | 2.445.213 |
+| Cobertura | **~38%** |
 
 ---
 
-## Diagnóstico: portal vs. periódico isolado (Passada 1)
+## Diagnóstico: portal vs. periódico isolado (P1)
 
 | Tipo | Tentados | Sucesso | Taxa |
 |------|----------|---------|------|
 | Periódicos isolados | 166 | 69 | **42%** |
 | Portais multi-revista | 55 | 1 | **2%** |
 
-Quase todo o sucesso da P1 vem de periódicos com instalação própria. A quase totalidade dos portais falha por timeout na coleta integral — confirmando a necessidade de coletar por set.
-
 ---
 
 ## Retry SSL — Etapa 1
 
-29 URLs com erro SSL recuperadas via monkey-patch em `requests.Session.request`:
+29 URLs com erro SSL recuperadas via monkey-patch `requests.Session.request` com `verify=False`:
 
 | Status | Qtd | Observação |
 |--------|-----|------------|
 | ✅ Sucesso | 37 | 6 já existiam, 31 novos |
-| ❌ HTTP 500 (servidor) | 15 | Irrecuperável |
+| ❌ HTTP 500 | 15 | Irrecuperável |
 | ❌ OAI-PMH error | 5 | Sets vazios |
 | ❌ SSL persistente | 1 | `portalgt.idp.edu.br` |
 | ❌ XML inválido | 1 | `coffeescience.ufla.br` |
 
-Top resultados: UFPE (23.246), Ufac (4.627), UNICENTRO (3.803), SPGG (3.316), UFRPE (3.258).
-
-Detalhes em `docs/ssl_retry_results.md` e `docs/error_report.md`.
+Bug fix: `from_date="2000-01-01"` (não `"2000"`). Issue: [ojs-scrape#9](https://github.com/ericbrasiln/ojs-scrape/issues/9)
 
 ---
 
-## Top 10 portais por volume (Passada 2)
+## Retry Isolados — Etapa 2a
+
+36 URLs isoladas com erro (não-SSL, não-portais). Probe rápido (15s) + timeout 600s.
+
+| Status | Qtd |
+|--------|-----|
+| ✅ Alive | 19 |
+| ❌ Mortas/bloqueadas | 17 |
+| ✅ Harvest OK | 1 (UEG — 8.589 registros) |
+| ❌ Harvest erro | 21 |
+
+⚠️ **Lição crítica:** NÃO coletar portais integralmente — duplica dados da P2. Portais = retry por set.
+
+---
+
+## Retry Portais — Etapa 2b
+
+77 portais com erro na P1/P2. Coleta por set com deduplicação.
+
+| Métrica | Valor |
+|---------|-------|
+| Portais processados | 62 (15 ListSets falhou) |
+| Sets OK | 511 |
+| Sets com erro | 215 |
+| Sets skip (já OK P2) | 1.946 |
+| **Registros novos** | **453.884** |
+
+---
+
+## Top 10 portais por volume (P2)
 
 | Portal | Sets OK | Registros |
 |--------|---------|-----------|
@@ -72,15 +98,9 @@ Detalhes em `docs/ssl_retry_results.md` e `docs/error_report.md`.
 
 ---
 
-## Estatísticas dos periódicos com sucesso (Passada 1)
+## Estatísticas dos periódicos com sucesso (P1)
 
 - Média: 690 registros/periódico
 - Mediana: 293 registros/periódico
 - Mínimo: 5 registros
 - Máximo: 4.596 registros
-
----
-
-## Próximos passos
-
-Detalhados em `docs/ROADMAP.md`.
