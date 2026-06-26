@@ -1,7 +1,7 @@
 # Relatório de Erros — OJS Brazil Harvest
 
-**Data:** 2026-06-04 (atualizado com resultados do Retry SSL)  
-**Após:** Passada 1 (coleta integral) + Passada 2 (coleta por set) + Retry SSL (Etapa 1)
+**Data:** 2026-06-26 (atualizado com resultados de todas as etapas de retry)
+**Após:** Passada 1 + Passada 2 + Retry SSL (Etapa 1) + Retry isolados (2a) + Retry portais (2b) + Retry P2 errors (Etapa 3)
 
 ---
 
@@ -117,19 +117,20 @@ Top resultados: UFPE (23.246), Ufac (4.627), UNICENTRO (3.803), SPGG (3.316), UF
 
 | Categoria | Qtd | Recuperável | Estratégia | Status |
 |-----------|-----|-------------|------------|--------|
-| P1 isolados: SSL | 13 | ✅ | Bypass SSL | ✅ Resolvido |
-| P1 portais: SSL | 4 | ✅ | Bypass SSL | ✅ Resolvido |
-| P1 isolados: HTTP 102 | 22 | ⚠️ Parcial | Timeout 600s | Etapa 2 |
-| P1 isolados: ConnectTimeout | 13 | ⚠️ Parcial | Retry depois | Etapa 2 |
-| P1 isolados: timeout geral | 29 | ⚠️ Parcial | Timeout 600s | Etapa 2 |
-| P2 sets: erro | 226 | ⚠️ Parcial | Retry timeout 300s, delay 2s | Etapa 3 |
-| P2 sets: timeout (não-USP) | 113 | ⚠️ Parcial | Retry timeout 300s | Etapa 3 |
-| P2 sets: USP timeout | 194 | ⚠️ Difícil | Delay 5-10s, madrugada | Etapa 4 |
+| P1 isolados: SSL | 13 | ✅ | Bypass SSL via `--no-verify-ssl` | ✅ Resolvido (PR #10) |
+| P1 portais: SSL | 4 | ✅ | Bypass SSL via `--no-verify-ssl` | ✅ Resolvido (PR #10) |
+| P1 isolados: HTTP 102 | 22 | ⚠️ Parcial | Timeout 600s | ✅ Etapa 2a |
+| P1 isolados: ConnectTimeout | 13 | ⚠️ Parcial | Retry depois | ✅ Etapa 2a |
+| P1 isolados: timeout geral | 29 | ⚠️ Parcial | Timeout 600s | ✅ Etapa 2a |
+| P1 portais com erro | 63 | ✅ | Coleta por set | ✅ Etapa 2b |
+| P2 sets: erro | 226 | ⚠️ Parcial | Retry timeout 300s | ✅ Etapa 3 |
+| P2 sets: timeout (não-USP) | 113 | ⚠️ Parcial | Retry timeout 300s | ✅ Etapa 3 |
+| P2 sets: USP timeout | 194 | ⚠️ Difícil | Delay 5s, madrugada | ⏳ Etapa 4 |
 | DNS/ConnectionError | 14 | ❌ Não | Domínios inexistentes | — |
 | XML/Parse | 7 | ⚠️ Parcial | Melhorar tratamento | — |
 
-**Ganho real até agora:** +54.948 registros (SSL bypass)  
-**Estimativa de ganho restante:** +25.000-65.000 registros (Etapas 2-4)
+**Ganho real até agora:** +521.763 registros (SSL + isolados + portais + P2 errors)
+**Estimativa de ganho restante:** +50K-100K (Etapa 4 — USP, incerto)
 
 ---
 
