@@ -17,34 +17,35 @@ Arquivo processado: `data/processed/ojs_brazil_pkp_beacon.json` (1.977 OAI URLs 
 
 **Problema:** 75% dos periódicos (4.422) estão em 538 portais multi-revista (SEER/portal institucional). Coletar todos os registros de um portal de uma vez causa timeouts — portais como USP possuem 1.000+ sets.
 
-**Estratégia revisada** (com base nos resultados da amostra):
+**Estratégia revisada** (com base nos resultados da amostra — implementada em `scripts/harvest_complete.py`):
 
 #### Fase 1 — Portais: coleta por set
 
-Para cada portal (URL com `n_journals > 1`):
+Para cada portal (URL OAI compartilhada por >1 periódico):
 
 1. Descobrir sets via `ListSets` (com paginação por `resumptionToken`)
 2. Filtrar apenas sets de nível superior (sem `:` no setSpec — `bjos:ART` é sub-seção, `bjos` é revista)
-3. Coletar cada set individualmente com `ojs-scrape --set <set_spec>`
-4. Timeout 120s por set, delay 1.0s entre requisições
+3. Coletar cada set individualmente com `ojs-scrape --set <set_spec> --no-verify-ssl`
+4. Timeout 120s por set, delay 1.0s entre requisições (5.0s para USP)
 5. Resultados: um arquivo JSON por set
+6. SSL bypass integrado via `--no-verify-ssl` (nativo no ojs-scrape desde PR #10)
 
 **Justificativa:** Na amostra, a coleta integral de portais teve 98% de falha. A coleta por set teve 77% de sucesso e rendeu 12x mais registros.
 
 #### Fase 2 — Periódicos isolados: coleta integral
 
-Para cada periódico com instalação própria (`n_journals == 1`):
+Para cada periódico com instalação própria (1 periódico por URL OAI):
 
-- Executar `ojs-scrape` sem filtro de set
+- Executar `ojs-scrape --no-verify-ssl` sem filtro de set
 - Timeout 300s por periódico
 - Sucesso esperado: ~42% (baseado na amostra)
 
 #### Fase 3 — Retry
 
-- SSL bypass para 17 URLs com certificado inválido
-- Timeout 600s para HTTP 102 e timeouts previos
-- Delay 2s para sets que falharam na Fase 1
-- Portais com rate limiting agressivo (ex.: USP): delay 5-10s, horário de madrugada
+- Timeout 600s para HTTP 102, timeouts e erros das Fases 1-2
+- `--no-verify-ssl` aplicado em todas as tentativas
+- Delay 1.0s entre sets; 5.0s para USP
+- Erros permanentes (403, 500, DNS) não são retried
 
 ### 3. Ferramenta: ojs-scrape CLI
 
@@ -53,18 +54,21 @@ Usamos [ojs-scrape](https://pypi.org/project/ojs-scrape/) v0.1.1 como motor de c
 - Protocolo OAI-PMH (`ListRecords` com paginação via `resumptionToken`)
 - Tratamento de caracteres de controle XML inválidos (comum em OJS 3.1.x/3.2.x)
 - Filtro local por data de publicação (OAI `from`/`until` filtram por datestamp, não por data de publicação)
+- Flag `--no-verify-ssl` para bypass de certificados SSL expirados/self-signed (PR #10, integrado a partir da issue #9)
+- Normalização automática de datas `YYYY` → `YYYY-MM-DD` no nível da API
 - Exportação em JSON, CSV e BibTeX
 
 ### 4. Parâmetros de Coleta
 
 | Parâmetro | Valor (portais) | Valor (isolados) | Justificativa |
 |-----------|-----------------|-------------------|---------------|
-| `--from` | 2000 | 2000 | Capturar toda a produção |
-| `--until` | ano atual | ano atual | Atualizar até o presente |
+| `--from` | 2000-01-01 | 2000-01-01 | Capturar toda a produção; YYYY-MM-DD obrigatório (badArgument caso contrário) |
+| `--until` | {ano}-12-31 | {ano}-12-31 | Atualizar até o presente |
 | `--timeout` | 120s por set | 300s por URL | Sets são menores; isolados precisam de mais tempo |
-| `--delay` | 1.0s (5-10s para USP) | 1.0s | Respeitar rate limiting |
+| `--delay` | 1.0s (5.0s para USP) | 1.0s | Respeitar rate limiting |
 | `--format` | json | json | CSV/BibTeX podem ser gerados depois |
 | `--set` | sim (por set) | não | Sets apenas para portais |
+| `--no-verify-ssl` | sim | sim | Bypass de certificados expirados/self-signed (integrado no ojs-scrape v0.1.1+) |
 | PDFs | **não coletados** | **não coletados** | Escopo é metadados apenas |
 
 ### 5. Tratamento de Erros
@@ -76,7 +80,7 @@ Baseado nos resultados da amostra (221 URLs + 2.361 sets):
 | Timeout em portais | 98% dos portais na coleta integral | Coletar por set (Fase 1) |
 | Timeout em isolados | ~14% | Retry com timeout 600s (Fase 3) |
 | HTTP 102 Processing | 15% (34/221) | Coletar por set ou timeout 600s |
-| SSL cert expirado/inválido | 8% (17/221) | Bypass SSL (Fase 3) |
+| SSL (certificado inválido) | 29 URLs (8% da amostra) | ✅ **Resolvido** — bypass via `requests.Session.request` com `verify=False`; 54.948 registros recuperados; feature request: [ojs-scrape#9](https://github.com/ericbrasiln/ojs-scrape/issues/9) |
 | ConnectTimeout | 6% (14/221) | Retry depois; registrar |
 | ConnectionError/DNS | 6% (14/221) | Registrar, skip (domínio morto) |
 | XML chars inválidos/Parse | 3% (7/221) | ojs-scrape trata automaticamente; alguns inescapáveis |

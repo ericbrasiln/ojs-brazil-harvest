@@ -37,6 +37,8 @@ A coleta utiliza o pacote Python [**ojs-scrape**](https://pypi.org/project/ojs-s
 
 O `ojs-scrape` é chamado via linha de comando como subprocesso, permitindo controle de timeout e monitoramento individual de cada coleta.
 
+**Limitação superada:** o `ojs-scrape` agora suporta `--no-verify-ssl` nativamente (PR #10 mergeado), eliminando a necessidade de monkey-patch. A flag desabilita verificação de certificados SSL e emite `UserWarning` quando ativada. Issue: [#9](https://github.com/ericbrasiln/ojs-scrape/issues/9).
+
 ---
 
 ## 4. Estratégia de coleta
@@ -45,17 +47,7 @@ O `ojs-scrape` é chamado via linha de comando como subprocesso, permitindo cont
 
 O tamanho dos repositórios OAI-PMH nos portais multi-revista gera um problema central: o endpoint agregado (`/index/oai`) lista **todos** os registros de **todas** as revistas do portal numa única resposta. Portais como o da USP, UFES ou SBC possuem mais de 1.000 sets — a resposta OAI-PMH pode exceder dezenas de milhares de registros, causando timeout do servidor.
 
-### Estratégia original (validada e descartada)
-
-A primeira abordagem testou duas passadas sequenciais:
-1. Passada 1 — coleta integral (sem set): funciona para isolados, falha para quase todos os portais (98% de falha)
-2. Passada 2 — coleta por set: recupera os portais após timeout
-
-**Problema:** a Passada 1 desperdiça ~240s em cada portal que vai falhar de qualquer forma.
-
-### Estratégia revisada (para o universo completo)
-
-Com base nos resultados da amostra, a ordem ótima é:
+### Estratégia revisada (com base nos resultados da amostra)
 
 1. **Portais → coleta por set PRIMEIRO** — descobrir sets via `ListSets`, coletar cada revista individualmente
 2. **Periódicos isolados → coleta integral** — funciona bem (42% de sucesso na amostra)
@@ -64,53 +56,69 @@ Com base nos resultados da amostra, a ordem ótima é:
 
 ### O processo de coleta por set
 
-1. **Descobrir os sets disponíveis** via `ListSets` (com paginação por `resumptionToken`)
-2. **Filtrar apenas sets de nível superior** — sets com `:` no setSpec (ex.: `bjos:ART`, `cel:EDI`) são sub-seções editoriais, não revistas. Apenas sets como `bjos`, `cel`, `cadpagu` correspondem a revistas individuais.
-3. **Coletar cada set individualmente** com `ojs-scrape --set <set_spec>`, timeout 120s por set
+1. Descobrir os sets disponíveis via `ListSets` (com paginação por `resumptionToken`)
+2. Filtrar apenas sets de nível superior — sets com `:` no setSpec (ex.: `bjos:ART`, `cel:EDI`) são sub-seções editoriais, não revistas
+3. Coletar cada set individualmente com `ojs-scrape --set <set_spec>`, timeout 120s por set
 4. Cada set gera um arquivo JSON separado: `portal_de_periodicos_da_usp__revista_de_saude_publica.json`
 
 ---
 
 ## 5. Resultados da amostra de validação
 
-Coletas amostrais com diferentes seeds sobre as 5.861 URLs responsivas, seguidas de coleta por set nos portais com timeout.
+Coletas amostrais com diferentes seeds sobre as 5.861 URLs responsivas, seguidas de coleta por set nos portais com timeout, e retry SSL.
 
 ### Consolidado
 
-| Métrica | Passada 1 (integral) | Passada 2 (por set) |
-|---------|---------------------|---------------------|
-| Targets tentados | 221 URLs | 2.361 sets (59 portais) |
-| ✅ Sucesso | 70 (32%) | 1.828 (77%) |
-| ⏱ Timeout | 63 (28%) | 307 (13%) |
-| ❌ Erro | 88 (40%) | 226 (10%) |
-| **Registros coletados** | **48.298** | **599.684** |
+| Fase | Registros | Detalhes |
+|------|-----------|---------|
+| P1 (integral) | 48.298 | 70 URLs OK de 221 |
+| P2 (por set) | 599.684 | 1.828 sets OK de 2.365 |
+| Etapa 1 — SSL | 54.948 | 29 URLs antes inacessíveis |
+| Etapa 2a — Isolados | 8.589 | 1 URL (UEG) |
+| Etapa 2b — Portais | 453.884 | 511 sets, 1.946 skip (sem duplicação) |
+| Etapa 3 — P2 errors | 4.342 | 4 sets OK, 138 noRecordsMatch, 79 skip |
+| **Total bruto** | **~1.169K** | |
+| **Registros únicos** | **~925K+** | 18% sobreposição entre sets |
 
 | Métrica consolidada | Valor |
 |---------------------|-------|
-| Registros em disco | 856.085 |
-| Arquivos JSON | 2.097 |
-| Tamanho em disco | 3,5 GB |
-| Cobertura do potencial (2,4M) | **35%** |
+| Arquivos JSON | 2.100+ |
+| Tamanho em disco | ~4 GB |
+| Cobertura do potencial (2,4M) | **~38%** |
 
-### Diagnóstico: portal vs. periódico isolado
+### Diagnóstico: portal vs. periódico isolado (Passada 1)
 
 | Tipo | Tentados | Sucesso | Taxa |
 |------|----------|---------|------|
 | Periódicos isolados | 166 | 69 | **42%** |
 | Portais multi-revista | 55 | 1 | **2%** |
 
-Quase todo o sucesso da Passada 1 vem de periódicos com instalação própria. A quase totalidade dos portais falha por timeout na coleta integral — confirmando a necessidade de coletar por set.
+### Retry SSL — Resultados da Etapa 1
+
+De 29 URLs com erro SSL, o bypass via `requests.Session.request` com `verify=False` recuperou:
+
+| Status | Qtd | Detalhe |
+|--------|-----|---------|
+| ✅ Sucesso | 37 | 6 já existiam, 31 novos |
+| ❌ HTTP 500 (servidor) | 15 | Irrecuperável do nosso lado |
+| ❌ OAI-PMH error | 5 | `noRecordsMatch`, sets vazios |
+| ❌ SSL persistente | 1 | `portalgt.idp.edu.br` |
+| ❌ XML inválido | 1 | `coffeescience.ufla.br` |
+
+Top resultados: UFPE (23.246), Ufac (4.627), UNICENTRO (3.803), SPGG (3.316), UFRPE (3.258).
+
+**Bug descoberto:** `from_date="2000"` causa `badArgument` em servidores OAI-PMH. Formato correto: `"2000-01-01"`.
 
 ### Tipos de erro consolidados
 
-| Tipo | Qtd | Recuperável? |
-|------|-----|-------------|
-| HTTP 102 Processing | 34 | Sim — coletar por set ou timeout 600s |
-| SSL (certificado inválido) | 17 | Sim — bypass SSL |
-| ConnectTimeout | 14 | Parcialmente — pode voltar depois |
-| ConnectionError/DNS | 14 | Não — domínio inexistente |
-| XML/Parse | 7 | Parcialmente — ojs-scrape já limpa alguns |
-| USP (rate limiting) | 194 sets | Difícil — delay alto, madrugada |
+| Tipo | Qtd | Recuperável? | Status |
+|------|-----|--------------|--------|
+| HTTP 102 Processing | 34 | Sim | Etapa 2 (retry) |
+| SSL (certificado inválido) | 29 | Sim | ✅ Resolvido — 54.948 registros |
+| ConnectTimeout | 14 | Parcialmente | Etapa 2 |
+| ConnectionError/DNS | 14 | Não | — |
+| XML/Parse | 7 | Parcialmente | — |
+| USP (rate limiting) | 194 sets | Difícil | Etapa 4 |
 
 Detalhamento completo em `docs/error_report.md`.
 
@@ -130,18 +138,19 @@ Detalhamento completo em `docs/error_report.md`.
 
 ### Estimativa de coleta completa
 
-Com a estratégia revisada (set primeiro, isolados depois, retry em seguida):
+Com a estratégia revisada:
 
-- **Portais por set** (538 portais, ~94% de sucesso por set): ~1.800.000 registros
+- **Portais por set** (538 portais, ~77% de sucesso): ~1.500.000 registros
 - **Isolados** (1.439, ~42% de sucesso): ~300.000 registros
-- **SSL bypass + retry timeout 600s**: +80.000-175.000 registros
-- **Total estimado**: **1,8 — 2,2 milhões de registros** (75-90% do potencial)
+- **SSL bypass** (resolvido na amostra): +54.948 registros
+- **Retry timeout 600s** (pendente): +5.000-15.000 registros
+- **Total estimado**: **1,8 — 2,0 milhões de registros** (75-85% do potencial)
 
 ### Produtos esperados
 
-1. **Dataset consolidado** — JSON/CSV com metadados deduplicados de ~2 milhões de artigos, com ISSNs, DOIs e datas de publicação
-2. **Relatório de infraestrutura** — diagnóstico dos periódicos OJS brasileiros: versões, certificados SSL, configuração OAI-PMH, disponibilidade
-3. **Dataset de portais** — mapeamento dos 538 portais multi-revista e suas revistas constituintes
+1. **Dataset consolidado** — JSON/CSV com metadados deduplicados, com ISSNs, DOIs e datas
+2. **Relatório de infraestrutura** — diagnóstico dos periódicos OJS brasileiros
+3. **Dataset de portais** — mapeamento dos 538 portais e suas revistas
 4. **Documentação metodológica** — protocolo reprodutível de coleta OAI-PMH em larga escala
 
 ---

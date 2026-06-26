@@ -1,118 +1,77 @@
 # ROADMAP — OJS Brazil Harvest
 
-Próximas etapas do projeto, com base nos resultados da amostra de validação (856K registros, 35% do potencial).
+Amostra de validação: ~1,169K registros brutos, ~925K únicos (38% do universo PKP Beacon).
 
 ---
 
-## Fase 1: Preparação para coleta completa
+## Fase 1: Preparação e amostra de validação ✅ CONCLUÍDA
 
-### 1.1 Adaptar scripts para máquina do LABHDUFBA
+- [x] Dataset PKP Beacon v6 processado e filtrado (6.086 periódicos BR, 5.861 responsivos)
+- [x] Scripts de coleta funcionais (`harvest_batch.py`, `harvest_by_set.py`)
+- [x] Amostra de validação: 221 URLs (P1) + 63 portais por set (P2)
+- [x] Documentação de resultados e erros
 
-- [ ] Documentar dependências e setup (`pip install -r requirements.txt`)
-- [ ] Testar `harvest_by_set.py` e `harvest_batch.py` no ambiente do Lab
-- [ ] Verificar conectividade com os portais (a rede da UFBA pode ter restrições)
-- [ ] Configurar execução em background (tmux/screen + nohup)
+## Fase 1.5: Retry de erros da amostra — PARCIALMENTE CONCLUÍDA
 
-### 1.2 Implementar SSL bypass no script
+| Etapa | Descrição | Registros | Status |
+|-------|-----------|-----------|--------|
+| 1 | SSL bypass (`requests.Session.request` + `verify=False`) | +54.948 | ✅ |
+| 2a | Isolados — probe + timeout 600s | +8.589 | ✅ |
+| 2b | Portais por set com deduplicação | +453.884 | ✅ |
+| 3 | P2 sets com erro — retry com SSL bypass + timeout 600s | +4.342 | ✅ |
+| 4 | USP dedicado — 194 sets, rate limiting agressivo | — | ⏳ Pendente |
+| 5 | Erros não classificados — investigar caso a caso | — | ⏳ Pendente |
 
-- [ ] Adicionar opção `--no-verify-ssl` ao `harvest_by_set.py` e `harvest_batch.py`
-- [ ] Alternativa: setar `PYTHONHTTPSVERIFY=0` antes do subprocesso
-- [ ] Estimativa: +17 URLs recuperáveis, +5.000-10.000 registros
+**Lições consolidadas:**
+- SSL bypass: monkey-patch em `requests.Session.request` (não `.send`); issue [ojs-scrape#9](https://github.com/ericbrasiln/ojs-scrape/issues/9)
+- `from_date` deve ser `YYYY-MM-DD` (não ano isolado) — `badArgument` caso contrário
+- Portais nunca devem ser coletados integralmente se já coletados por set — duplica dados
+- Maioria dos "erros" da P2 era `noRecordsMatch` (sets vazios confirmados pelo servidor) — irrecuperável
+- Erros HTTP 500/403/DNS são em geral permanentes — não recuperáveis do nosso lado
+- Retorno decrescente: Etapa 2b (+453K) foi a mais produtiva; Etapa 3 (+4,3K) rendeu pouco
 
-### 1.3 Melhorar captura de erros no `harvest_by_set.py`
+### Etapa 4 — USP dedicado
 
-- [ ] Aumentar limite de stderr capturado (atual: 500 chars, perde tipo de exceção)
-- [ ] Classificar erros por tipo (HTTP status code, SSL, timeout, parse)
-- [ ] Gerar relatório de erros automático ao final da coleta
+- 194 sets da USP com timeout na P2 (rate limiting agressivo)
+- Estratégia: delay 5-10s entre sets, agendar para madrugada
+- Se rate limiting persistir, investigar por IP ou user-agent
+- Ganho estimado: +50K-100K registros (difícil, incerto)
 
----
+### Etapa 5 — Erros não classificados
 
-## Fase 2: Coleta completa
+- ~6 URLs + 7 erros de XML/parse não categorizados
+- Rodar `ojs-scrape` manualmente, classificar caso a caso
+- Ganho incerto
 
-**Onde:** máquina do LABHDUFBA (não na VPS)
+## Fase 2: Coleta completa (no LABHDUFBA)
 
-### 2.1 Portais — coleta por set (538 portais)
+- [ ] Adaptar scripts para rodar em máquina do Lab (não VPS)
+- [ ] Integrar SSL bypass nos scripts de produção (não como monkey-patch separado)
+- [ ] Corrigir `from_date` para `"2000-01-01"` em todos os scripts
+- [ ] Rodar coleta completa: 538 portais por set → 1.439 isolados
+- [ ] Estimativa: 1,8-2,0 milhões de registros, 48-72h de processamento
 
-- [ ] Rodar `harvest_by_set.py` sem `--sample` para todos os 538 portais
-- [ ] Timeout 120s por set, delay 1.0s
-- [ ] Usar `--resume` para tolerar interrupções
-- [ ] Estimativa: ~20.000-30.000 sets, ~1.800.000 registros, ~50-80h
+## Fase 3: Pós-coleta
 
-### 2.2 Periódicos isolados — coleta integral (1.439 URLs)
-
-- [ ] Rodar `harvest_batch.py` sem `--sample` para os 1.439 isolados
-- [ ] Timeout 300s, delay 1.0s
-- [ ] Estimativa: ~600 URLs com sucesso, ~300.000 registros, ~8-12h
-
-### 2.3 Retry — SSL bypass + timeout estendido
-
-- [ ] Reprocessar URLs com SSL (17) e HTTP 102 (34) com bypass e timeout 600s
-- [ ] Reprocessar sets com erro/timeout da Passada 2 (533 sets) com timeout 300s, delay 2s
-- [ ] Estimativa: +80.000-175.000 registros
-
-### 2.4 Portal da USP — abordagem dedicada
-
-- [ ] Tentar delay 5-10s entre sets
-- [ ] Agendar para madrugada (2h-6h BRT)
-- [ ] Se rate limiting persistir: investigar proxy ou IP alternativo
-- [ ] Potencial: ~50.000-100.000 registros
-
----
-
-## Fase 3: Consolidação
-
-### 3.1 Deduplicação
-
-- [ ] Criar script de deduplicação por ISSN (periódicos que aparecem como URL isolada e dentro de portal)
-- [ ] Deduplicar por DOI (artigos com mesmo DOI em fontes diferentes)
-- [ ] Gerar dataset consolidado em `data/processed/ojs_brazil_consolidated.json`
-
-### 3.2 Validação de qualidade
-
-- [ ] Verificar completude dos campos: título, autor, data, DOI, ISSN
-- [ ] Cruzar ISSNs com a lista do PKP Beacon
-- [ ] Identificar registros com metadados mínimos (sem título ou sem data)
-- [ ] Gerar relatório de qualidade em `docs/quality_report.md`
-
-### 3.3 Enriquecimento
-
-- [ ] Cruzar com base de dados Scielo/DOAJ para classificar indexação
-- [ ] Adicionar versão do OJS (do PKP Beacon)
-- [ ] Adicionar geolocalização das instituições (por domínio)
-
----
+- [ ] Deduplicação por ISSN (muitos registros aparecem em múltiplos sets)
+- [ ] Validação de integridade (campos obrigatórios, datas, DOIs)
+- [ ] Enriquecimento: cruzar com CrossRef, ORCID, etc.
+- [ ] Consolidar resultados de todas as fases (P1 + P2 + SSL + retry)
 
 ## Fase 4: Publicação
 
-### 4.1 Dataset
-
-- [ ] Formato: JSON + CSV (convertido a partir do JSON)
-- [ ] Publicar em Zenodo ou Dataverse (com DOI)
-- [ ] Metadados Dublin Core
-- [ ] README com data dictionary
-
-### 4.2 Relatório de infraestrutura
-
-- [ ] Diagnóstico dos periódicos OJS brasileiros: versões, SSL, disponibilidade OAI-PMH
-- [ ] Mapa de portais (538) e suas revistas constituintes
-- [ ] Taxa de sucesso/falha por instituição
-
-### 4.3 Artigo metodológico
-
-- [ ] Descrever protocolo OAI-PMH em larga escala
-- [ ] Lições aprendidas: rate limiting, SSL, XML inválido, paginação
-- [ ] Comparar com outras iniciativas (CrossRef, Unpaywall, OpenAIRE)
+- [ ] Dataset final em Zenodo ou Dataverse (DOI)
+- [ ] Relatório de infraestrutura dos periódicos OJS brasileiros
+- [ ] Artigo metodológico
+- [ ] Repositório GitHub público com scripts e documentação
 
 ---
 
 ## Cronograma estimado
 
-| Fase | Duração estimada | Depende de |
-|------|-----------------|------------|
-| 1. Preparação | 1-2 semanas | Acesso ao Lab |
-| 2.1 Portais por set | 3-5 dias (contínuo) | Setup no Lab |
-| 2.2 Isolados | 1 dia | Setup no Lab |
-| 2.3 Retry | 1-2 dias | Após 2.1+2.2 |
-| 2.4 USP | 1 dia | Após 2.1 |
-| 3. Consolidação | 2-3 semanas | Após Fase 2 |
-| 4. Publicação | 2-4 semanas | Após Fase 3 |
+| Fase | Duração estimada | Status |
+|------|-----------------|--------|
+| 1.5 — Retry erros (amostra) | Etapas 1-3 ✅ · Etapas 4-5 pendentes | 🔄 Parcial |
+| 2 — Coleta completa | 2-3 dias (máquina Lab) | ⏳ Pendente |
+| 3 — Deduplicação e validação | 2-3 dias | ⏳ Pendente |
+| 4 — Publicação | 1 semana | ⏳ Pendente |

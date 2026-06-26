@@ -1,67 +1,88 @@
 # Resultados da Coleta OAI-PMH — Amostra de Validação
 
-**Período:** 2026-05-31 a 2026-06-03  
+**Período:** 2026-05-31 a 2026-06-05  
 **Dataset fonte:** PKP Beacon v6 (6.086 OJS Brasil, 5.861 responsivos)  
-**Scripts:** `scripts/harvest_batch.py` (P1), `scripts/harvest_by_set.py` (P2)
+**Scripts:** `harvest_batch.py`, `harvest_by_set.py`, `retry_ssl.py`, `retry_isolated.py`, `retry_portals_by_set.py`
 
 ---
 
-## Resumo Consolidado (Passada 1 + Passada 2)
+## Resumo Consolidado
 
-| Métrica | Passada 1 (integral) | Passada 2 (por set) | Total |
-|---------|---------------------|---------------------|-------|
-| Targets tentados | 221 URLs | 2.361 sets (59 portais) | — |
-| ✅ Sucesso | 70 (32%) | 1.828 (77%) | 1.898 |
-| ⏱ Timeout | 63 (28%) | 307 (13%) | 370 |
-| ❌ Erro | 88 (40%) | 226 (10%) | 314 |
-| **Registros coletados** | **48.298** | **599.684** | **647.982** |
+| Fase | Registros | Detalhes |
+|------|-----------|---------|
+| P1 (integral) | 48.298 | 70 URLs OK de 221 |
+| P2 (por set) | 599.684 | 1.828 sets OK de 2.365 |
+| Etapa 1 — SSL | 54.948 | 29 URLs antes inacessíveis |
+| Etapa 2a — Isolados | 8.589 | 1 URL (UEG) |
+| Etapa 2b — Portais | 453.884 | 511 sets, 1.946 skip (sem duplicação) |
+| Etapa 3 — P2 errors | 4.342 | 4 sets OK, 138 noRecordsMatch, 79 skip |
+| **Total bruto** | **~1.169K** | |
+| **Registros únicos** | **~925K+** | 18% sobreposição entre sets |
 
 | Métrica de disco | Valor |
 |------------------|-------|
-| Registros em disco | 856.085 |
-| Arquivos JSON | 2.097 |
-| Tamanho em disco | 3,5 GB |
-| Potencial do dataset PKP | 2.445.213 registros |
-| Cobertura do potencial | **35%** |
+| Arquivos JSON | 2.100+ |
+| Tamanho em disco | ~4 GB |
+| Potencial PKP Beacon | 2.445.213 |
+| Cobertura | **~38%** |
 
 ---
 
-## Diagnóstico: portal vs. periódico isolado (Passada 1)
+## Diagnóstico: portal vs. periódico isolado (P1)
 
 | Tipo | Tentados | Sucesso | Taxa |
 |------|----------|---------|------|
 | Periódicos isolados | 166 | 69 | **42%** |
 | Portais multi-revista | 55 | 1 | **2%** |
 
-**Conclusão:** a coleta integral serve para periódicos isolados, mas é ineficaz para portais. A Passada 2 por set confirmou que os mesmos portais que falhavam na P1 rendem 77% de sucesso quando coletados set por set.
+---
+
+## Retry SSL — Etapa 1
+
+29 URLs com erro SSL recuperadas via monkey-patch `requests.Session.request` com `verify=False`:
+
+| Status | Qtd | Observação |
+|--------|-----|------------|
+| ✅ Sucesso | 37 | 6 já existiam, 31 novos |
+| ❌ HTTP 500 | 15 | Irrecuperável |
+| ❌ OAI-PMH error | 5 | Sets vazios |
+| ❌ SSL persistente | 1 | `portalgt.idp.edu.br` |
+| ❌ XML inválido | 1 | `coffeescience.ufla.br` |
+
+Bug fix: `from_date="2000-01-01"` (não `"2000"`). Issue: [ojs-scrape#9](https://github.com/ericbrasiln/ojs-scrape/issues/9)
 
 ---
 
-## Evolução das coletas (Passada 1)
+## Retry Isolados — Etapa 2a
 
-| Run (seed) | Targets | OK | Erro | Timeout | Registros |
-|------------|---------|----|------|---------|-----------|
-| 130833 (s1, n5) | 5 | 3 | 1 | 1 | 4.065 |
-| 154841 (s2, n100) | 91 | 40 | 24 | 27 | 56.239 |
-| 192035 (s3, n200) | 144 | 60 | 49 | 35 | 59.363 |
-| 001302 (s4, n400) | 205 | 92 | 66 | 47 | 89.021 |
-| 055940 (s4, n400, resume) | 221 | 70 | 88 | 63 | 48.298 |
+36 URLs isoladas com erro (não-SSL, não-portais). Probe rápido (15s) + timeout 600s.
 
-Notas: cada run usa `--sample` com seeds diferentes, então as URLs não são as mesmas. A última run (055940) usou `--resume` e processou targets que não tinham sido tentados nas runs anteriores.
+| Status | Qtd |
+|--------|-----|
+| ✅ Alive | 19 |
+| ❌ Mortas/bloqueadas | 17 |
+| ✅ Harvest OK | 1 (UEG — 8.589 registros) |
+| ❌ Harvest erro | 21 |
 
----
-
-## Passada 2 — Classificação dos portais
-
-| Categoria | Qtd | Descrição |
-|-----------|-----|-----------|
-| Todos sets OK | 6 | Coleta completa sem falhas |
-| Parcialmente OK | 46 | Alguns sets falharam, maioria OK |
-| 100% falha | 7 | Nenhum set coletado (incl. USP com 194 sets) |
+⚠️ **Lição crítica:** NÃO coletar portais integralmente — duplica dados da P2. Portais = retry por set.
 
 ---
 
-## Top 10 portais por volume (Passada 2)
+## Retry Portais — Etapa 2b
+
+77 portais com erro na P1/P2. Coleta por set com deduplicação.
+
+| Métrica | Valor |
+|---------|-------|
+| Portais processados | 62 (15 ListSets falhou) |
+| Sets OK | 511 |
+| Sets com erro | 215 |
+| Sets skip (já OK P2) | 1.946 |
+| **Registros novos** | **453.884** |
+
+---
+
+## Top 10 portais por volume (P2)
 
 | Portal | Sets OK | Registros |
 |--------|---------|-----------|
@@ -78,15 +99,9 @@ Notas: cada run usa `--sample` com seeds diferentes, então as URLs não são as
 
 ---
 
-## Estatísticas dos periódicos com sucesso (Passada 1)
+## Estatísticas dos periódicos com sucesso (P1)
 
 - Média: 690 registros/periódico
 - Mediana: 293 registros/periódico
 - Mínimo: 5 registros
 - Máximo: 4.596 registros
-
----
-
-## Próximos passos
-
-Detalhados em `docs/ROADMAP.md`.

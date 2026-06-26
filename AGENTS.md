@@ -14,9 +14,44 @@ Coleta massiva de metadados OAI-PMH de periódicos científicos brasileiros em p
 
 ## Scripts disponíveis
 
-### `scripts/harvest_batch.py` — Coleta integral (Passada 1)
+### `scripts/harvest_complete.py` — Orquestrador da coleta completa
 
-Coleta periódicos sem filtro de set. Para periódicos isolados.
+Executa as três fases em sequência, com resumabilidade e checkpoints:
+
+1. **Fase 1 — Portais:** coleta por set (descobrir sets via ListSets, coletar cada set)
+2. **Fase 2 — Isolados:** coleta integral (sem filtro de set)
+3. **Fase 3 — Retry:** timeout 600s + `--no-verify-ssl` para falhas
+
+```bash
+# Coleta completa (todas as fases)
+python3 scripts/harvest_complete.py --resume --verbose
+
+# Apenas uma fase
+python3 scripts/harvest_complete.py --phase 1 --resume -v
+
+# Dry run (simular)
+python3 scripts/harvest_complete.py --dry-run
+
+# Com timeouts customizados
+python3 scripts/harvest_complete.py --timeout-set 120 --timeout-iso 300 --timeout-retry 600
+```
+
+Parâmetros principais:
+- `--phase N` — executar apenas a fase N (1, 2 ou 3)
+- `--resume` — retomar a partir do checkpoint
+- `--dry-run` — simular sem coletar
+- `--timeout-set N` — timeout por set na Fase 1 (default: 120s)
+- `--timeout-iso N` — timeout por isolado na Fase 2 (default: 300s)
+- `--timeout-retry N` — timeout por retry na Fase 3 (default: 600s)
+- `--delay N` — delay entre requisições (default: 1.0s)
+- `--delay-usp N` — delay para USP e portais com rate limiting (default: 5.0s)
+- `--skip-unresponsive` — pular 225 URLs não responsivas (default: True)
+
+Saída: `data/raw/` (JSON por set/periódico) + `phase{N}_results.json` + `harvest_complete_checkpoint.json`
+
+### `scripts/harvest_batch.py` — Coleta integral (Passada 1 — amostra)
+
+Script da amostra de validação. Coleta periódicos sem filtro de set.
 
 ```bash
 python3 scripts/harvest_batch.py \
@@ -74,11 +109,12 @@ Saída: `data/raw/harvest_by_set_results_YYYYMMDD_HHMMSS.json` + progresso em `d
 
 ## Erros comuns
 
-- **Timeout em portais**: usar coleta por set
-- **SSL**: contornar com `PYTHONHTTPSVERIFY=0` ou patch no ojs-scrape
-- **HTTP 102**: aumentar timeout para 600s
+- **Timeout em portais**: usar coleta por set (Fase 1 do `harvest_complete.py`)
+- **SSL (certificados expirados/self-signed)**: usar `--no-verify-ssl` (nativo no ojs-scrape desde PR #10)
+- **HTTP 102**: aumentar timeout para 600s (Fase 3 do `harvest_complete.py`)
 - **DNS inexistente**: não recuperável, registrar e skip
 - **XML inválido**: ojs-scrape já faz limpeza; alguns casos inescapáveis
+- **Rate limiting (USP)**: `harvest_complete.py` aplica delay 5s automaticamente para `revistas.usp.br`
 
 Ver `docs/error_report.md` para análise completa.
 
