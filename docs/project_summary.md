@@ -37,7 +37,7 @@ A coleta utiliza o pacote Python [**ojs-scrape**](https://pypi.org/project/ojs-s
 
 O `ojs-scrape` é chamado via linha de comando como subprocesso, permitindo controle de timeout e monitoramento individual de cada coleta.
 
-**Limitação descoberta:** o `ojs-scrape` não suporta bypass de verificação SSL. Reportamos isso como [issue #9](https://github.com/ericbrasiln/ojs-scrape/issues/9) e implementamos um monkey-patch (`requests.Session.request` com `verify=False`) como workaround temporário.
+**Limitação superada:** o `ojs-scrape` agora suporta `--no-verify-ssl` nativamente (PR #10 mergeado), eliminando a necessidade de monkey-patch. A flag desabilita verificação de certificados SSL e emite `UserWarning` quando ativada. Issue: [#9](https://github.com/ericbrasiln/ojs-scrape/issues/9).
 
 ---
 
@@ -69,18 +69,22 @@ Coletas amostrais com diferentes seeds sobre as 5.861 URLs responsivas, seguidas
 
 ### Consolidado
 
-| Métrica | P1 (integral) | P2 (por set) | Retry SSL | Total |
-|---------|---------------|---------------|-----------|-------|
-| Targets tentados | 221 URLs | 2.361 sets (59 portais) | 29 URLs (37 targets) | — |
-| ✅ Sucesso | 70 (32%) | 1.828 (77%) | 31 (+6 skip) | — |
-| Registros coletados | 48.298 | 599.684 | 54.948 | **702.930** |
+| Fase | Registros | Detalhes |
+|------|-----------|---------|
+| P1 (integral) | 48.298 | 70 URLs OK de 221 |
+| P2 (por set) | 599.684 | 1.828 sets OK de 2.365 |
+| Etapa 1 — SSL | 54.948 | 29 URLs antes inacessíveis |
+| Etapa 2a — Isolados | 8.589 | 1 URL (UEG) |
+| Etapa 2b — Portais | 453.884 | 511 sets, 1.946 skip (sem duplicação) |
+| Etapa 3 — P2 errors | 4.342 | 4 sets OK, 138 noRecordsMatch, 79 skip |
+| **Total bruto** | **~1.169K** | |
+| **Registros únicos** | **~925K+** | 18% sobreposição entre sets |
 
 | Métrica consolidada | Valor |
 |---------------------|-------|
-| Registros em disco | ~910.000 |
 | Arquivos JSON | 2.100+ |
 | Tamanho em disco | ~4 GB |
-| Cobertura do potencial (2,4M) | **~37%** |
+| Cobertura do potencial (2,4M) | **~38%** |
 
 ### Diagnóstico: portal vs. periódico isolado (Passada 1)
 

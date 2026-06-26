@@ -10,7 +10,7 @@ Mapear a produção acadêmica brasileira veiculada em periódicos OJS, extraind
 
 ## Status
 
-**Amostra de validação concluída** — 856K registros coletados (35% do potencial). Estratégia validada: coleta por set para portais, coleta integral para isolados. Ver `docs/harvest_results.md` e `docs/ROADMAP.md`.
+**Amostra de validação concluída** — ~1,169K registros brutos (~925K únicos), 38% do potencial. Estratégia validada e script orquestrador pronto para coleta completa. Ver `docs/harvest_results.md`, `docs/ROADMAP.md` e `scripts/harvest_complete.py`.
 
 ## Dataset PKP Beacon
 
