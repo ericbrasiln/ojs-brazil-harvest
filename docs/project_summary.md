@@ -27,7 +27,7 @@ A estrutura do universo revela uma característica importante: **4.422 periódic
 
 ## 3. Ferramenta de coleta: ojs-scrape
 
-A coleta utiliza o pacote Python [**ojs-scrape**](https://pypi.org/project/ojs-scrape/) (v0.1.1), que implementa:
+A coleta utiliza o pacote Python [**ojs-scrape**](https://pypi.org/project/ojs-scrape/) (v0.1.2), que implementa:
 
 - Protocolo OAI-PMH completo — `ListRecords` com paginação via `resumptionToken`
 - Tratamento automático de caracteres de controle XML inválidos (comum em OJS 3.1.x/3.2.x)
