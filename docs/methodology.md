@@ -111,9 +111,36 @@ data/logs/
 data/processed/
 ├── ojs_brazil_pkp_beacon.json                  # Dataset filtrado do PKP Beacon
 ├── ojs_brazil_responsive_urls.txt              # Lista de URLs responsivas
+data/derived/
+├── articles.jsonl                              # Registros consolidados com proveniência
+├── articles.csv                                # Tabela reduzida para análise
+├── manifest.json                               # Checksums e resumo da consolidação
+├── validation_report.json                      # Alertas e registros inválidos
+├── duplicate_decisions.csv                     # Fusões por identificador forte
+├── duplicate_candidates.json                   # Candidatos para revisão humana
 ```
 
 Nomes de arquivo: `{slug_do_nome}__{set_spec}.json` para sets, `{slug_do_nome}.json` para coletas integrais. O slug é derivado do `repositoryName` (minúsculas, espaços → underscores, caracteres especiais removidos).
+
+### 8. Validação e consolidação pós-coleta
+
+Após a coleta, `scripts/process_harvest.py` valida e consolida os JSONs brutos.
+
+```bash
+python3 scripts/process_harvest.py --input-dir data/raw --output-dir data/derived
+```
+
+A fusão automática usa apenas identificadores fortes:
+
+1. DOI normalizado;
+2. identificador OAI;
+3. URL canônica.
+
+Registros com a mesma chave fraca (`título + primeiro autor + ano`) são listados como candidatos em `duplicate_candidates.json`, mas não são fundidos automaticamente.
+
+Cada registro consolidado preserva `_provenance`, com arquivo de origem, índice no JSON bruto e SHA-256 do arquivo bruto.
+
+Ver `docs/processing_pipeline.md` e `docs/data_dictionary.md`.
 
 ---
 

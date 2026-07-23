@@ -1,0 +1,87 @@
+{
+  "$schema": "https://frictionlessdata.io/schemas/data-package.json",
+  "name": "ojs-brazil-harvest",
+  "version": "0.1.0",
+  "title": "OJS Brazil Harvest",
+  "description": "Metadados OAI-PMH de periódicos científicos brasileiros em plataformas OJS, coletados a partir do universo brasileiro identificado no PKP Beacon v6.",
+  "homepage": "https://github.com/LABHDUFBA/ojs-brazil-harvest",
+
+  "sources": [
+    {
+      "title": "PKP Beacon v6 — Details of publications using software by the Public Knowledge Project",
+      "path": "https://doi.org/10.7910/DVN/OCZNVY"
+    }
+  ],
+  "contributors": [
+    {
+      "title": "Eric Brasil Nepomuceno",
+      "role": "author"
+    },
+    {
+      "title": "LABHDUFBA",
+      "role": "publisher"
+    }
+  ],
+  "keywords": [
+    "OJS",
+    "OAI-PMH",
+    "periodicos cientificos",
+    "Brasil",
+    "metadados",
+    "humanidades digitais"
+  ],
+  "resources": [
+    {
+      "name": "pkp-beacon-brazil-ojs",
+      "path": "data/processed/ojs_brazil_pkp_beacon.json",
+      "format": "json",
+      "mediatype": "application/json",
+      "description": "Recorte brasileiro do PKP Beacon v6, sem campos de contato.",
+      "licenses": [
+        {
+          "name": "CC0-1.0",
+          "path": "https://creativecommons.org/publicdomain/zero/1.0/",
+          "title": "Creative Commons Zero v1.0 Universal"
+        }
+      ],
+      "schema": {
+        "fields": [
+          {"name": "oai_url", "type": "string", "description": "Endpoint OAI-PMH da instalação OJS ou portal."},
+          {"name": "base_url", "type": "string", "description": "URL base derivada do endpoint OAI-PMH."},
+          {"name": "repository_name", "type": "string", "description": "Nome do repositório OAI informado pelo endpoint."},
+          {"name": "context_name", "type": "string", "description": "Nome do periódico ou contexto no PKP Beacon."},
+          {"name": "version", "type": "string", "description": "Versão declarada do OJS."},
+          {"name": "issn", "type": "string", "description": "ISSN(s) conhecidos, separados por ponto e vírgula quando múltiplos."},
+          {"name": "total_record_count", "type": "integer", "description": "Total de registros estimado pelo PKP Beacon."},
+          {"name": "unresponsive_endpoint", "type": "boolean", "description": "Indica endpoint OAI-PMH não responsivo no Beacon."},
+          {"name": "unresponsive_context", "type": "boolean", "description": "Indica contexto não responsivo no Beacon."},
+          {"name": "earliest_datestamp", "type": "datetime", "description": "Primeiro datestamp OAI-PMH observado pelo Beacon."},
+          {"name": "last_oai_response", "type": "datetime", "description": "Última resposta OAI-PMH observada pelo Beacon."},
+          {"name": "record_count_2020", "type": "integer", "description": "Contagem anual estimada para 2020."},
+          {"name": "record_count_2021", "type": "integer", "description": "Contagem anual estimada para 2021."},
+          {"name": "record_count_2022", "type": "integer", "description": "Contagem anual estimada para 2022."},
+          {"name": "record_count_2023", "type": "integer", "description": "Contagem anual estimada para 2023."},
+          {"name": "record_count_2024", "type": "integer", "description": "Contagem anual estimada para 2024."},
+          {"name": "record_count_2025", "type": "integer", "description": "Contagem anual estimada para 2025."},
+          {"name": "country_consolidated", "type": "string", "description": "País consolidado pelo Beacon; filtrado para BR."},
+          {"name": "region", "type": "string", "description": "Região geográfica no Beacon."},
+          {"name": "set_spec", "type": "string", "description": "Set OAI-PMH associado ao periódico/contexto quando disponível."}
+        ]
+      }
+    },
+    {
+      "name": "articles-consolidated-jsonl",
+      "path": "data/derived/articles.jsonl",
+      "format": "jsonl",
+      "mediatype": "application/x-ndjson",
+      "description": "Artigos consolidados e deduplicados, com proveniência de cada arquivo bruto. Gerado por scripts/process_harvest.py. Não é versionado por padrão. Os direitos variam por periódico e são preservados no campo rights."
+    },
+    {
+      "name": "articles-consolidated-csv",
+      "path": "data/derived/articles.csv",
+      "format": "csv",
+      "mediatype": "text/csv",
+      "description": "Versão tabular reduzida dos artigos consolidados. Gerada por scripts/process_harvest.py. Não é versionada por padrão. Os direitos variam por periódico."
+    }
+  ]
+}

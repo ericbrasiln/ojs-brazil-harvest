@@ -1,1 +1,2 @@
-ojs-scrape
+ojs-scrape>=0.1.1
+pytest>=8.0

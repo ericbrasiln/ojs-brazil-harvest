@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Testes e validações
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Instalar dependências
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements-dev.txt
+
+      - name: Executar testes
+        run: python -m pytest -q
+
+      - name: Verificar estilo e erros estáticos
+        run: ruff check scripts/harvest_complete.py scripts/prepare_beacon_dataset.py scripts/process_harvest.py tests
+
+      - name: Verificar sintaxe Python
+        run: python -m py_compile scripts/*.py scripts/legacy/*.py tests/test_*.py
+
+      - name: Validar Data Package
+        run: python -m json.tool datapackage.json > /dev/null
+
+      - name: Impedir versionamento de dados locais
+        run: |
+          if git ls-files data/raw data/derived | grep -vE '^data/(raw|derived)/\.gitkeep$' | grep -q .; then
+            echo "Dados locais encontrados no versionamento."
+            git ls-files data/raw data/derived
+            exit 1
+          fi

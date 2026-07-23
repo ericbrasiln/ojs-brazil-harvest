@@ -32,6 +32,7 @@ Opções:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import os
@@ -39,8 +40,7 @@ import re
 import subprocess
 import sys
 import time
-from collections import Counter
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -91,6 +91,45 @@ def setup_logging(log_dir: Path, verbose: bool = False) -> logging.Logger:
 
 
 # ---------------------------------------------------------------------------
+# Pre-flight validation
+# ---------------------------------------------------------------------------
+def normalize_harvest_date(value: str, is_until: bool = False) -> str:
+    if re.fullmatch(r"\d{4}", value):
+        return f"{value}-12-31" if is_until else f"{value}-01-01"
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        raise ValueError(f"Data inválida: {value}. Use YYYY ou YYYY-MM-DD.")
+    try:
+        datetime.strptime(value, "%Y-%m-%d")
+    except ValueError as exc:
+        raise ValueError(f"Data inválida: {value}. Use uma data real em YYYY-MM-DD.") from exc
+    return value
+
+
+def validate_date_range(from_date: str, until_date: str) -> None:
+    start = date.fromisoformat(from_date)
+    end = date.fromisoformat(until_date)
+    if start > end:
+        raise ValueError(f"from ({from_date}) não pode ser posterior a until ({until_date})")
+
+
+def ensure_ojs_scrape_available() -> None:
+    try:
+        result = subprocess.run(
+            ["ojs-scrape", "--help"],
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise RuntimeError("ojs-scrape não está disponível no PATH") from exc
+    help_text = f"{result.stdout}\n{result.stderr}"
+    if result.returncode != 0:
+        raise RuntimeError("ojs-scrape --help falhou; verifique a instalação")
+    if "--no-verify-ssl" not in help_text:
+        raise RuntimeError("ojs-scrape instalado não suporta --no-verify-ssl; atualize a dependência")
+
+
+# ---------------------------------------------------------------------------
 # Slugify
 # ---------------------------------------------------------------------------
 def slugify(text: str, max_len: int = 60) -> str:
@@ -102,14 +141,21 @@ def slugify(text: str, max_len: int = 60) -> str:
     return text[:max_len]
 
 
-def make_output_path(output_dir: Path, name: str, set_spec: str | None = None) -> Path:
+def make_output_path(
+    output_dir: Path,
+    name: str,
+    oai_url: str,
+    set_spec: str | None = None,
+) -> Path:
     slug = slugify(name)
     if not slug or slug == "unknown":
         slug = "unknown_repo"
+    identity = f"{oai_url}\0{set_spec or ''}"
+    identity_hash = hashlib.sha256(identity.encode()).hexdigest()[:12]
     if set_spec:
         set_slug = slugify(set_spec.split(":")[-1] if ":" in set_spec else set_spec, max_len=30)
-        return output_dir / f"{slug}__{set_slug}.json"
-    return output_dir / f"{slug}.json"
+        return output_dir / f"{slug}__{set_slug}--{identity_hash}.json"
+    return output_dir / f"{slug}--{identity_hash}.json"
 
 
 # ---------------------------------------------------------------------------
@@ -130,10 +176,25 @@ def load_checkpoint(output_dir: Path) -> dict:
     }
 
 
+def save_json_atomic(path: Path, data) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        with open(tmp_path, "w") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, path)
+    except Exception:
+        tmp_path.unlink(missing_ok=True)
+        raise
+
+
 def save_checkpoint(output_dir: Path, checkpoint: dict) -> None:
-    cp_path = output_dir / "harvest_complete_checkpoint.json"
-    with open(cp_path, "w") as f:
-        json.dump(checkpoint, f, ensure_ascii=False, indent=2)
+    save_json_atomic(output_dir / "harvest_complete_checkpoint.json", checkpoint)
+
+
+def update_checkpoint(output_dir: Path, checkpoint: dict, dry_run: bool) -> None:
+    if not dry_run:
+        save_checkpoint(output_dir, checkpoint)
 
 
 # ---------------------------------------------------------------------------
@@ -312,13 +373,13 @@ def phase1_portals(
 
         sets = discover_sets(url, timeout=30, logger=logger)
         if sets is None:
-            logger.warning(f"  ListSets falhou — pulando")
+            logger.warning("  ListSets falhou — pulando")
             total_error += 1
             all_results.append({"oai_url": url, "repository_name": name, "status": "error_listsets", "record_count": 0})
             processed.add(url)
             continue
         if not sets:
-            logger.warning(f"  0 sets encontrados — pulando")
+            logger.warning("  0 sets encontrados — pulando")
             total_error += 1
             all_results.append({"oai_url": url, "repository_name": name, "status": "empty_listsets", "record_count": 0})
             processed.add(url)
@@ -327,7 +388,7 @@ def phase1_portals(
         logger.info(f"  {len(sets)} sets encontrados — coletando...")
 
         for set_idx, set_spec in enumerate(sets, 1):
-            out_path = make_output_path(output_dir, name, set_spec)
+            out_path = make_output_path(output_dir, name, url, set_spec)
 
             # Resume: pular se arquivo já existe
             if resume and out_path.exists() and out_path.stat().st_size > 100:
@@ -377,13 +438,13 @@ def phase1_portals(
 
         processed.add(url)
         checkpoint["phase1_portals_processed"] = list(processed)
-        save_checkpoint(output_dir, checkpoint)
+        update_checkpoint(output_dir, checkpoint, dry_run)
 
     checkpoint["phase1_done"] = True
-    save_checkpoint(output_dir, checkpoint)
+    update_checkpoint(output_dir, checkpoint, dry_run)
 
     logger.info("-" * 40)
-    logger.info(f"FASE 1 CONCLUÍDA")
+    logger.info("FASE 1 CONCLUÍDA")
     logger.info(f"  Portais processados: {len(processed)}")
     logger.info(f"  ✅ OK: {total_ok} | ❌ Erro: {total_error} | ⏱ Timeout: {total_timeout} | ⏭ Skip: {total_skip}")
     logger.info(f"  📊 Registros: {total_records:,}")
@@ -438,7 +499,7 @@ def phase2_isolateds(
             total_skip += 1
             continue
 
-        out_path = make_output_path(output_dir, name)
+        out_path = make_output_path(output_dir, name, url)
 
         if resume and out_path.exists() and out_path.stat().st_size > 100:
             logger.info(f"[{idx}/{len(isolated_urls)}] SKIP (já existe): {name[:50]}")
@@ -490,16 +551,16 @@ def phase2_isolateds(
         processed.add(url)
         if idx % 10 == 0:
             checkpoint["phase2_isolateds_processed"] = list(processed)
-            save_checkpoint(output_dir, checkpoint)
+            update_checkpoint(output_dir, checkpoint, dry_run)
 
         time.sleep(delay)
 
     checkpoint["phase2_isolateds_processed"] = list(processed)
     checkpoint["phase2_done"] = True
-    save_checkpoint(output_dir, checkpoint)
+    update_checkpoint(output_dir, checkpoint, dry_run)
 
     logger.info("-" * 40)
-    logger.info(f"FASE 2 CONCLUÍDA")
+    logger.info("FASE 2 CONCLUÍDA")
     logger.info(f"  Isolados processados: {len(processed)}")
     logger.info(f"  ✅ OK: {total_ok} | ❌ Erro: {total_error} | ⏱ Timeout: {total_timeout} | ⏭ Skip: {total_skip}")
     logger.info(f"  📊 Registros: {total_records:,}")
@@ -545,7 +606,7 @@ def phase3_retry(
     if not failed:
         logger.info("Nenhuma falha para retry. Encerrando.")
         checkpoint["phase3_done"] = True
-        save_checkpoint(output_dir, checkpoint)
+        update_checkpoint(output_dir, checkpoint, dry_run)
         return []
 
     processed = set(checkpoint.get("phase3_retries_processed", []))
@@ -564,7 +625,7 @@ def phase3_retry(
             total_skip += 1
             continue
 
-        out_path = make_output_path(output_dir, name, set_spec)
+        out_path = make_output_path(output_dir, name, url, set_spec)
 
         if resume and out_path.exists() and out_path.stat().st_size > 100:
             logger.info(f"[{idx}/{len(failed)}] SKIP (já existe): {name[:50]}")
@@ -610,16 +671,16 @@ def phase3_retry(
         processed.add(key)
         if idx % 5 == 0:
             checkpoint["phase3_retries_processed"] = list(processed)
-            save_checkpoint(output_dir, checkpoint)
+            update_checkpoint(output_dir, checkpoint, dry_run)
 
         time.sleep(delay)
 
     checkpoint["phase3_retries_processed"] = list(processed)
     checkpoint["phase3_done"] = True
-    save_checkpoint(output_dir, checkpoint)
+    update_checkpoint(output_dir, checkpoint, dry_run)
 
     logger.info("-" * 40)
-    logger.info(f"FASE 3 CONCLUÍDA")
+    logger.info("FASE 3 CONCLUÍDA")
     logger.info(f"  Retries processados: {len(processed)}")
     logger.info(f"  ✅ OK: {total_ok} | ❌ Erro: {total_error} | ⏭ Skip: {total_skip}")
     logger.info(f"  📊 Registros novos: {total_records:,}")
@@ -645,7 +706,12 @@ def main() -> None:
     parser.add_argument("--timeout-retry", type=int, default=DEFAULT_TIMEOUT_RETRY)
     parser.add_argument("--delay", type=float, default=DEFAULT_DELAY)
     parser.add_argument("--delay-usp", type=float, default=DEFAULT_DELAY_USP)
-    parser.add_argument("--skip-unresponsive", action="store_true", default=True)
+    parser.add_argument(
+        "--skip-unresponsive",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Pular endpoints marcados como não responsivos (use --no-skip-unresponsive para incluir)",
+    )
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--phase", type=int, choices=[1, 2, 3], help="Executar apenas a fase N")
@@ -659,10 +725,20 @@ def main() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     logger = setup_logging(log_dir, args.verbose)
+    try:
+        from_date = normalize_harvest_date(args.from_date)
+        until_date = normalize_harvest_date(args.until_date, is_until=True)
+        validate_date_range(from_date, until_date)
+        if not args.dry_run:
+            ensure_ojs_scrape_available()
+    except (ValueError, RuntimeError) as exc:
+        logger.error(str(exc))
+        raise SystemExit(2) from exc
+
     logger.info(f"harvest_complete.py — {datetime.now().isoformat()}")
     logger.info(f"Input: {input_path}")
     logger.info(f"Output: {output_dir}")
-    logger.info(f"From: {args.from_date} | Until: {args.until_date}")
+    logger.info(f"From: {from_date} | Until: {until_date}")
     logger.info(f"Timeouts: set={args.timeout_set}s | iso={args.timeout_iso}s | retry={args.timeout_retry}s")
     logger.info(f"Delay: {args.delay}s (USP: {args.delay_usp}s)")
     logger.info(f"Resume: {args.resume} | Dry run: {args.dry_run}")
@@ -689,14 +765,14 @@ def main() -> None:
     # Fase 1: Portais
     if (run_phase == 0 or run_phase == 1) and not checkpoint["phase1_done"]:
         results1 = phase1_portals(
-            dataset, output_dir, args.from_date, args.until_date,
+            dataset, output_dir, from_date, until_date,
             args.timeout_set, args.delay, args.delay_usp,
             args.resume, args.dry_run, args.verbose,
             checkpoint, logger,
         )
-        with open(output_dir / "phase1_results.json", "w") as f:
-            json.dump(results1, f, ensure_ascii=False, indent=2)
-        logger.info(f"Resultados Fase 1: {output_dir / 'phase1_results.json'}")
+        if not args.dry_run:
+            save_json_atomic(output_dir / "phase1_results.json", results1)
+            logger.info(f"Resultados Fase 1: {output_dir / 'phase1_results.json'}")
     elif run_phase == 1 and checkpoint["phase1_done"]:
         logger.info("Fase 1 já concluída. Use --resume para continuar.")
     elif run_phase == 0 and checkpoint["phase1_done"]:
@@ -705,14 +781,14 @@ def main() -> None:
     # Fase 2: Isolados
     if (run_phase == 0 or run_phase == 2) and not checkpoint["phase2_done"]:
         results2 = phase2_isolateds(
-            dataset, output_dir, args.from_date, args.until_date,
+            dataset, output_dir, from_date, until_date,
             args.timeout_iso, args.delay,
             args.resume, args.dry_run, args.verbose,
             checkpoint, logger,
         )
-        with open(output_dir / "phase2_results.json", "w") as f:
-            json.dump(results2, f, ensure_ascii=False, indent=2)
-        logger.info(f"Resultados Fase 2: {output_dir / 'phase2_results.json'}")
+        if not args.dry_run:
+            save_json_atomic(output_dir / "phase2_results.json", results2)
+            logger.info(f"Resultados Fase 2: {output_dir / 'phase2_results.json'}")
     elif run_phase == 2 and checkpoint["phase2_done"]:
         logger.info("Fase 2 já concluída.")
     elif run_phase == 0 and checkpoint["phase2_done"]:
@@ -721,14 +797,14 @@ def main() -> None:
     # Fase 3: Retry
     if (run_phase == 0 or run_phase == 3) and not checkpoint["phase3_done"]:
         results3 = phase3_retry(
-            output_dir, args.from_date, args.until_date,
+            output_dir, from_date, until_date,
             args.timeout_retry, args.delay,
             args.resume, args.dry_run, args.verbose,
             checkpoint, logger,
         )
-        with open(output_dir / "phase3_results.json", "w") as f:
-            json.dump(results3, f, ensure_ascii=False, indent=2)
-        logger.info(f"Resultados Fase 3: {output_dir / 'phase3_results.json'}")
+        if not args.dry_run:
+            save_json_atomic(output_dir / "phase3_results.json", results3)
+            logger.info(f"Resultados Fase 3: {output_dir / 'phase3_results.json'}")
     elif run_phase == 3 and checkpoint["phase3_done"]:
         logger.info("Fase 3 já concluída.")
     elif run_phase == 0 and checkpoint["phase3_done"]:

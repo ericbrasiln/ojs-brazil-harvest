@@ -2,7 +2,7 @@
 
 **Período:** 2026-05-31 a 2026-06-05  
 **Dataset fonte:** PKP Beacon v6 (6.086 OJS Brasil, 5.861 responsivos)  
-**Scripts:** `harvest_batch.py`, `harvest_by_set.py`, `retry_ssl.py`, `retry_isolated.py`, `retry_portals_by_set.py`
+**Scripts históricos:** `scripts/legacy/harvest_batch.py`, `scripts/legacy/harvest_by_set.py`, `scripts/legacy/retry_ssl.py`, `scripts/legacy/retry_isolated.py`, `scripts/legacy/retry_portals_by_set.py`
 
 ---
 

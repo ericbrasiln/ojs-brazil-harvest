@@ -2,7 +2,7 @@
 
 **Data:** 2026-06-04
 **Branch:** `fix/retry-errors`
-**Script:** `scripts/retry_ssl.py`
+**Script histórico:** `scripts/legacy/retry_ssl.py`
 
 ## Resumo
 

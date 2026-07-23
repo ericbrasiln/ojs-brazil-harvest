@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "Se você usar este repositório, cite-o como abaixo."
+title: "OJS Brazil Harvest"
+type: software
+authors:
+  - family-names: "Brasil Nepomuceno"
+    given-names: "Eric"
+repository-code: "https://github.com/LABHDUFBA/ojs-brazil-harvest"
+abstract: "Scripts e documentação para coleta, validação e consolidação de metadados OAI-PMH de periódicos científicos brasileiros em plataformas OJS, a partir do PKP Beacon."
+keywords:
+  - OJS
+  - OAI-PMH
+  - periódicos científicos
+  - Brasil
+  - metadados
+license: MIT
+date-released: "2026-07-22"
+references:
+  - type: dataset
+    authors:
+      - name: "Khanna, S.; Raoni, J.; Smecher, A.; Alperin, J. P.; Ball, J.; Willinsky, J."
+    title: "Details of publications using software by the Public Knowledge Project"
+    doi: "10.7910/DVN/OCZNVY"
