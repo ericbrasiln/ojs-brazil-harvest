@@ -28,10 +28,15 @@ cd ojs-brazil-harvest
 ### 3. Verificar dataset de entrada
 
 ```bash
-# Confirmar que o dataset PKP Beacon filtrado está presente
+# Confirmar que o recorte brasileiro do PKP Beacon está presente
 ls -la data/processed/ojs_brazil_pkp_beacon.json
 # Deve ter ~4.7MB, 6.086 entradas
+
+# Se for necessário reconstruir a partir do PKP Beacon v6:
+python3 scripts/prepare_beacon_dataset.py --download
 ```
+
+Ver `docs/data_provenance.md` para fonte, checksum e campos preservados.
 
 ### 4. Verificar espaço em disco
 

@@ -7,7 +7,7 @@ Amostra de validação: ~1,169K registros brutos, ~925K únicos (38% do universo
 ## Fase 1: Preparação e amostra de validação ✅ CONCLUÍDA
 
 - [x] Dataset PKP Beacon v6 processado e filtrado (6.086 periódicos BR, 5.861 responsivos)
-- [x] Scripts de coleta funcionais (`harvest_batch.py`, `harvest_by_set.py`)
+- [x] Scripts de coleta funcionais preservados em `scripts/legacy/`; orquestrador de produção em `scripts/harvest_complete.py`
 - [x] Amostra de validação: 221 URLs (P1) + 63 portais por set (P2)
 - [x] Documentação de resultados e erros
 

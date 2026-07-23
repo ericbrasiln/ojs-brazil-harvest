@@ -8,9 +8,7 @@ Coleta massiva de metadados OAI-PMH de periódicos científicos brasileiros em p
 
 ## Diretório de trabalho
 
-```
-/home/ebn/projetos/ojs-brazil-harvest
-```
+Use a raiz do repositório como diretório de trabalho.
 
 ## Scripts disponíveis
 
@@ -49,51 +47,31 @@ Parâmetros principais:
 
 Saída: `data/raw/` (JSON por set/periódico) + `phase{N}_results.json` + `harvest_complete_checkpoint.json`
 
-### `scripts/harvest_batch.py` — Coleta integral (Passada 1 — amostra)
+### `scripts/prepare_beacon_dataset.py` — Preparo do recorte brasileiro
 
-Script da amostra de validação. Coleta periódicos sem filtro de set.
-
-```bash
-python3 scripts/harvest_batch.py \
-  --sample 400 --seed 4 \
-  --skip-unresponsive --resume \
-  --timeout 180 --verbose
-```
-
-Parâmetros principais:
-- `--sample N` — limitar a N URLs (remover para universo completo)
-- `--seed N` — seed para amostragem aleatória
-- `--skip-unresponsive` — pular 225 URLs não responsivas do dataset
-- `--resume` — retomar a partir do último resultado, pulando URLs já coletadas
-- `--timeout N` — timeout em segundos por URL
-- `--verbose` —输出 detalhado
-
-Saída: `data/raw/harvest_results_YYYYMMDD_HHMMSS.json` + arquivos JSON por periódico em `data/raw/`
-
-### `scripts/harvest_by_set.py` — Coleta por set (Passada 2)
-
-Coleta portais multi-revista set por set. A abordagem preferencial para portais.
+Reproduz `data/processed/ojs_brazil_pkp_beacon.json` a partir da exportação tabular oficial do PKP Beacon v6.
+O arquivo bruto global `data/raw/beacon.tab` não é versionado porque contém `admin_email` e dados globais não necessários.
 
 ```bash
-python3 scripts/harvest_by_set.py \
-  --timeout 120 --resume --verbose
+python3 scripts/prepare_beacon_dataset.py --download
 ```
 
-Parâmetros principais:
-- `--timeout N` — timeout por set (default: 120s)
-- `--resume` — retomar a partir do progresso salvo
-- `--verbose` —输出 detalhado
-- `--dry-run` — apenas ListSets, sem coletar registros
+Ver `docs/data_provenance.md` para fonte, checksum e metodologia.
 
-Saída: `data/raw/harvest_by_set_results_YYYYMMDD_HHMMSS.json` + progresso em `data/raw/harvest_by_set_progress.json`
+### Scripts legados
+
+Scripts históricos das passadas amostrais e retries foram movidos para `scripts/legacy/`.
+Eles servem para auditoria metodológica, não para iniciar novas coletas.
+
+Ver `scripts/legacy/README.md`.
 
 ### Fonte de dados
 
-`data/processed/ojs_brazil_pkp_beacon.json` — 6.086 periódicos brasileiros com metadados do PKP Beacon, incluindo `oai_url`, `n_journals`, `application_version`, `country_consolidated`.
+`data/processed/ojs_brazil_pkp_beacon.json` — 6.086 periódicos brasileiros com metadados do PKP Beacon. Portais são identificados contando ocorrências de `oai_url`; não existe campo `n_journals`.
 
 ## Convenções
 
-- **Dados brutos** em `data/raw/` — JSON individual por periódico (slug do nome) ou por set (`slug__set_spec`)
+- **Dados brutos** em `data/raw/` — JSON individual por periódico ou set, com slug legível e hash estável da URL/set
 - **Dados processados** em `data/processed/` — dataset filtrado, listas
 - **Logs** em `data/logs/` — logs de execução
 - **Documentação** em `docs/` — metodologia, resultados, relatórios
@@ -102,9 +80,9 @@ Saída: `data/raw/harvest_by_set_results_YYYYMMDD_HHMMSS.json` + progresso em `d
 
 ## Estratégia de coleta (ordem correta)
 
-1. Portais → `harvest_by_set.py` (coleta por set primeiro)
-2. Periódicos isolados → `harvest_batch.py` (coleta integral)
-3. Retry → SSL bypass + timeout 600s
+1. Portais → Fase 1 de `scripts/harvest_complete.py` (coleta por set primeiro)
+2. Periódicos isolados → Fase 2 de `scripts/harvest_complete.py` (coleta integral)
+3. Retry → Fase 3 de `scripts/harvest_complete.py` (SSL bypass + timeout 600s)
 4. Portais agressivos → delay alto, madrugada
 
 ## Erros comuns
@@ -122,7 +100,7 @@ Ver `docs/error_report.md` para análise completa.
 
 - Python 3.12+
 - Dependências: `ojs-scrape` (ver `requirements.txt`)
-- Os dados brutos estão em `.gitignore` (`data/raw/*.json`, `data/logs/*.log`)
+- Os dados brutos estão em `.gitignore` (`data/raw/*`, `data/logs/*.log`)
 - **A coleta completa não roda na VPS** — será executada em máquina do LABHDUFBA
 
 ## Git

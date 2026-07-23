@@ -47,7 +47,7 @@
 
 **⚠️ Lição crítica:** NÃO coletar portais integralmente — duplica dados da P2. Portais devem ser retried por set.
 
-**Script:** `scripts/retry_isolated.py`
+**Script histórico:** `scripts/legacy/retry_isolated.py`
 
 ---
 
@@ -70,7 +70,7 @@
 - 15 portais com ListSets bloqueado (403, DNS, servidor morto)
 - 215 sets com erro (500, timeout, XML inválido)
 
-**Script:** `scripts/retry_portals_by_set.py`
+**Script histórico:** `scripts/legacy/retry_portals_by_set.py`
 
 ---
 
@@ -93,7 +93,7 @@
 - Erros permanentes de servidor (500, connection reset) não são recuperáveis
 - Apenas 4 sets com timeout na P2 resolveram com timeout 600s
 
-**Script:** `scripts/retry_p2_errors.py`
+**Script histórico:** `scripts/legacy/retry_p2_errors.py`
 
 ---
 

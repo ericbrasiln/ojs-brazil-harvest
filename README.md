@@ -10,7 +10,7 @@ Mapear a produção acadêmica brasileira veiculada em periódicos OJS, extraind
 
 ## Status
 
-**Amostra de validação concluída** — ~1,169K registros brutos (~925K únicos), 38% do potencial. Estratégia validada e script orquestrador pronto para coleta completa. Ver `docs/harvest_results.md`, `docs/ROADMAP.md` e `scripts/harvest_complete.py`.
+**Amostra de validação concluída** — aproximadamente 1,169 milhão de registros brutos e 925 mil registros únicos estimados, equivalentes a cerca de 38% do potencial. Estratégia validada e script orquestrador preparado para a coleta completa. Ver `docs/harvest_results.md`, `docs/ROADMAP.md` e `scripts/harvest_complete.py`.
 
 ## Dataset PKP Beacon
 
@@ -25,12 +25,13 @@ ojs-brazil-harvest/
 ├── config/             # Listas de periódicos e configurações
 │   └── journals_list.txt
 ├── data/
-│   ├── raw/            # Dados brutos coletados (JSON por periódico/set)
-│   ├── processed/      # PKP Beacon filtrado, listas de URLs
-│   └── logs/           # Logs de execução
-├── scripts/            # Scripts de coleta e processamento
-│   ├── harvest_batch.py      # Coleta integral (Passada 1)
-│   └── harvest_by_set.py     # Coleta por set (Passada 2)
+│   ├── raw/            # Dados brutos locais não versionados
+│   ├── processed/      # Recorte brasileiro do PKP Beacon e listas de URLs
+│   └── logs/           # Logs locais não versionados
+├── scripts/            # Scripts de produção e preparo de dados
+│   ├── harvest_complete.py        # Orquestrador canônico da coleta
+│   ├── prepare_beacon_dataset.py  # Reproduz o recorte brasileiro do PKP Beacon
+│   └── legacy/                  # Scripts históricos preservados para auditoria
 ├── docs/               # Documentação do projeto
 │   ├── project_summary.md    # Apresentação para o LABHDUFBA
 │   ├── methodology.md         # Metodologia de coleta
@@ -61,12 +62,11 @@ pip install -r requirements.txt
 ojs-scrape "https://periodicos.ufba.br/index.php/afroasia" \
   --from 2000 --until 2026 -o data/raw/afroasia
 
-# Coleta em lote (periódicos isolados, sem set)
-python scripts/harvest_batch.py --sample 400 --seed 4 \
-  --skip-unresponsive --resume --timeout 180 --verbose
+# Coleta completa recomendada
+python3 scripts/harvest_complete.py --resume -v
 
-# Coleta por set (portais multi-revista)
-python scripts/harvest_by_set.py --timeout 120 --resume --verbose
+# Reproduzir o recorte brasileiro do PKP Beacon
+python3 scripts/prepare_beacon_dataset.py --download
 ```
 
 ## Estratégia de coleta
@@ -82,6 +82,8 @@ Ver `docs/methodology.md` para detalhes.
 
 - `docs/project_summary.md` — apresentação do projeto para o LABHDUFBA
 - `docs/methodology.md` — metodologia e parâmetros de coleta
+- `docs/data_provenance.md` — proveniência e reconstrução do recorte PKP Beacon
+- `docs/script_inventory.md` — classificação dos scripts de produção e legado
 - `docs/harvest_results.md` — resultados consolidados da amostra
 - `docs/error_report.md` — análise detalhada dos erros
 - `docs/ROADMAP.md` — próximos passos e cronograma
