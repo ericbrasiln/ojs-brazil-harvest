@@ -1,126 +1,223 @@
 # AGENTS.md — Guia para agentes automatizados
 
-Este arquivo orienta agentes de IA e scripts automatizados que interagem com este repositório.
+Este arquivo define como agentes de IA e automações devem trabalhar neste repositório.
+As instruções são independentes de máquina, usuário e infraestrutura.
 
-## O que é este projeto
+## Objetivo do projeto
 
-Coleta massiva de metadados OAI-PMH de periódicos científicos brasileiros em plataformas OJS. Utiliza o pacote `ojs-scrape` e o dataset PKP Beacon v6 como fonte de URLs.
+Coletar metadados OAI-PMH de periódicos científicos brasileiros em plataformas OJS.
+O universo inicial de URLs vem do recorte brasileiro do PKP Beacon v6.
+A coleta usa o pacote `ojs-scrape` e não inclui PDFs ou textos completos.
 
 ## Diretório de trabalho
 
-Use a raiz do repositório como diretório de trabalho.
+Use sempre a raiz do repositório como diretório de trabalho.
+Use caminhos relativos ao repositório.
+Não introduza caminhos absolutos, nomes de máquinas, usuários, endereços de rede ou credenciais em arquivos versionados.
 
-## Scripts disponíveis
+## Requisitos
 
-### `scripts/harvest_complete.py` — Orquestrador da coleta completa
+- Python 3.12 ou superior;
+- espaço em disco compatível com uma coleta de vários gigabytes;
+- acesso de rede aos endpoints OAI-PMH;
+- permissão de escrita em `data/`.
 
-Executa as três fases em sequência, com resumabilidade e checkpoints:
+Prepare um ambiente isolado:
 
-1. **Fase 1 — Portais:** coleta por set (descobrir sets via ListSets, coletar cada set)
-2. **Fase 2 — Isolados:** coleta integral (sem filtro de set)
-3. **Fase 3 — Retry:** timeout 600s + `--no-verify-ssl` para falhas
-
-```bash
-# Coleta completa (todas as fases)
-python3 scripts/harvest_complete.py --resume --verbose
-
-# Apenas uma fase
-python3 scripts/harvest_complete.py --phase 1 --resume -v
-
-# Dry run (simular)
-python3 scripts/harvest_complete.py --dry-run
-
-# Com timeouts customizados
-python3 scripts/harvest_complete.py --timeout-set 120 --timeout-iso 300 --timeout-retry 600
-```
-
-Parâmetros principais:
-- `--phase N` — executar apenas a fase N (1, 2 ou 3)
-- `--resume` — retomar a partir do checkpoint
-- `--dry-run` — simular sem coletar
-- `--timeout-set N` — timeout por set na Fase 1 (default: 120s)
-- `--timeout-iso N` — timeout por isolado na Fase 2 (default: 300s)
-- `--timeout-retry N` — timeout por retry na Fase 3 (default: 600s)
-- `--delay N` — delay entre requisições (default: 1.0s)
-- `--delay-usp N` — delay para USP e portais com rate limiting (default: 5.0s)
-- `--skip-unresponsive` — pular 225 URLs não responsivas (default: True)
-
-Saída: `data/raw/` (JSON por set/periódico) + `phase{N}_results.json` + `harvest_complete_checkpoint.json`
-
-### `scripts/prepare_beacon_dataset.py` — Preparo do recorte brasileiro
-
-Reproduz `data/processed/ojs_brazil_pkp_beacon.json` a partir da exportação tabular oficial do PKP Beacon v6.
-O arquivo bruto global `data/raw/beacon.tab` não é versionado porque contém `admin_email` e dados globais não necessários.
+Os exemplos usam shell POSIX e o comando `python3`.
+Em outro sistema, use o launcher Python e o comando de ativação equivalentes.
 
 ```bash
-python3 scripts/prepare_beacon_dataset.py --download
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-Ver `docs/data_provenance.md` para fonte, checksum e metodologia.
-
-### `scripts/process_harvest.py` — Validação e consolidação pós-coleta
-
-Consolida os JSONs brutos de `data/raw/` em saídas derivadas não versionadas.
+Para desenvolvimento e testes:
 
 ```bash
-python3 scripts/process_harvest.py --input-dir data/raw --output-dir data/derived
+python -m pip install -r requirements-dev.txt
 ```
 
-Regras centrais:
-- fusão automática apenas por DOI, `oai_identifier` ou URL canônica;
-- chave fraca de título, primeiro autor e ano gera candidatos para revisão, sem fusão automática;
-- cada registro consolidado preserva `_provenance`.
+## Regras obrigatórias
 
-Ver `docs/processing_pipeline.md`.
+Antes de executar qualquer coleta:
 
-### Scripts legados
+1. confirme que está na raiz do repositório;
+2. registre o commit com `git rev-parse HEAD`;
+3. verifique `git status --short`;
+4. confirme a versão do Python e as dependências;
+5. verifique o espaço disponível em disco;
+6. verifique se já existe uma coleta usando o mesmo diretório de saída;
+7. localize e preserve checkpoints existentes;
+8. execute primeiro o modo `--dry-run` em uma instalação nova.
 
-Scripts históricos das passadas amostrais e retries foram movidos para `scripts/legacy/`.
-Eles servem para auditoria metodológica, não para iniciar novas coletas.
+Nunca:
 
-Ver `scripts/legacy/README.md`.
+- inicie duas coletas no mesmo diretório de saída;
+- apague dados, logs ou checkpoints sem autorização explícita;
+- versione arquivos de `data/raw/`, `data/derived/` ou logs, exceto placeholders `.gitkeep` já previstos;
+- altere parâmetros metodológicos sem registrar e justificar a mudança;
+- use scripts em `scripts/legacy/` para uma coleta nova;
+- colete PDFs ou textos completos;
+- faça push de resultados da coleta;
+- apresente resultados que não foram produzidos e verificados pela execução real.
 
-### Fonte de dados
+A coleta completa pode durar muitas horas.
+Use um mecanismo de execução que preserve o processo e os logs mesmo se a sessão interativa terminar.
+Não informe sucesso antes de o processo encerrar e os arquivos de saída serem verificados.
 
-`data/processed/ojs_brazil_pkp_beacon.json` — 6.086 periódicos brasileiros com metadados do PKP Beacon. Portais são identificados contando ocorrências de `oai_url`; não existe campo `n_journals`.
+## Fonte de URLs
 
-## Convenções
+O arquivo versionado `data/processed/ojs_brazil_pkp_beacon.json` contém o recorte brasileiro do PKP Beacon v6.
+Portais são identificados pela repetição de `oai_url`; não existe campo `n_journals`.
 
-- **Dados brutos** em `data/raw/` — JSON individual por periódico ou set, com slug legível e hash estável da URL/set
-- **Dados processados** em `data/processed/` — dataset filtrado, listas
-- **Dados derivados** em `data/derived/` — consolidação local, não versionada
-- **Logs** em `data/logs/` — logs de execução
-- **Documentação** em `docs/` — metodologia, resultados, relatórios
-- **Não coletar PDFs** — escopo é metadados apenas
-- **Respeitar rate limiting** — delay mínimo de 1s entre requisições; 5-10s para portais com rate limiting agressivo (ex.: USP)
+Para reconstruir o recorte a partir da fonte oficial:
 
-## Estratégia de coleta (ordem correta)
+```bash
+python scripts/prepare_beacon_dataset.py --download
+```
 
-1. Portais → Fase 1 de `scripts/harvest_complete.py` (coleta por set primeiro)
-2. Periódicos isolados → Fase 2 de `scripts/harvest_complete.py` (coleta integral)
-3. Retry → Fase 3 de `scripts/harvest_complete.py` (SSL bypass + timeout 600s)
-4. Portais agressivos → delay alto, madrugada
+O arquivo global `data/raw/beacon.tab` não deve ser versionado.
+Veja `docs/data_provenance.md`.
 
-## Erros comuns
+## Coleta
 
-- **Timeout em portais**: usar coleta por set (Fase 1 do `harvest_complete.py`)
-- **SSL (certificados expirados/self-signed)**: usar `--no-verify-ssl` (nativo no ojs-scrape desde PR #10)
-- **HTTP 102**: aumentar timeout para 600s (Fase 3 do `harvest_complete.py`)
-- **DNS inexistente**: não recuperável, registrar e skip
-- **XML inválido**: ojs-scrape já faz limpeza; alguns casos inescapáveis
-- **Rate limiting (USP)**: `harvest_complete.py` aplica delay 5s automaticamente para `revistas.usp.br`
+O orquestrador oficial é `scripts/harvest_complete.py`.
+Ele executa:
 
-Ver `docs/error_report.md` para análise completa.
+1. portais, com coleta por set;
+2. instalações isoladas, com coleta integral;
+3. retry de falhas, com timeout ampliado e tratamento de SSL.
 
-## Ambiente
+### Verificação sem coleta
 
-- Python 3.12+
-- Dependências: `ojs-scrape` (ver `requirements.txt`)
-- Os dados brutos estão em `.gitignore` (`data/raw/*`, `data/logs/*.log`)
-- **A coleta completa não roda na VPS** — será executada em máquina do LABHDUFBA
+```bash
+python scripts/harvest_complete.py --dry-run
+```
+
+O `--dry-run` não deve criar ou modificar checkpoints e resultados.
+
+### Iniciar ou retomar a coleta completa
+
+```bash
+python scripts/harvest_complete.py --resume --verbose
+```
+
+Use `--resume` como padrão para preservar o progresso.
+Não remova `harvest_complete_checkpoint.json` para reiniciar uma execução sem autorização explícita.
+
+### Executar uma fase específica
+
+```bash
+python scripts/harvest_complete.py --phase 1 --resume --verbose
+```
+
+Fases válidas: `1`, `2` e `3`.
+
+### Parâmetros principais
+
+- `--phase N`: executa apenas a fase indicada;
+- `--resume`: retoma a partir do checkpoint;
+- `--dry-run`: valida o plano sem coletar;
+- `--timeout-set N`: timeout por set na fase 1;
+- `--timeout-iso N`: timeout por instalação isolada na fase 2;
+- `--timeout-retry N`: timeout na fase 3;
+- `--delay N`: intervalo entre requisições;
+- `--delay-usp N`: intervalo específico para portais da USP;
+- `--skip-unresponsive` e `--no-skip-unresponsive`: controlam endpoints classificados como não responsivos.
+
+Não reduza os delays para acelerar a coleta.
+Respeite rate limiting e indisponibilidades dos servidores de origem.
+Não aplique bypass de SSL fora da fase de retry prevista pelo orquestrador.
+
+## Monitoramento e interrupção
+
+Durante uma coleta:
+
+- acompanhe a saída e os logs;
+- verifique periodicamente o espaço em disco;
+- preserve o PID ou identificador do processo;
+- registre a fase e o checkpoint atuais ao relatar progresso.
+
+Para interromper, use primeiro o mecanismo normal de encerramento do sistema ou da ferramenta de execução.
+Evite encerramento forçado.
+Depois da interrupção, confirme que o processo terminou e que o checkpoint continua legível.
+Retome com `--resume`.
+
+## Pós-processamento
+
+Consolide a coleta somente após verificar os arquivos em `data/raw/`:
+
+```bash
+python scripts/process_harvest.py \
+  --input-dir data/raw \
+  --output-dir data/derived
+```
+
+O pipeline:
+
+- valida arquivos e registros;
+- deduplica por DOI, identificador OAI e URL canônica;
+- preserva a proveniência;
+- gera JSONL, CSV, manifesto, relatório de validação e tabela de decisões;
+- usa título, primeiro autor e ano apenas para sugerir candidatos à revisão humana.
+
+Após a execução, confira pelo menos:
+
+- `data/derived/manifest.json`;
+- `data/derived/validation_report.json`;
+- `data/derived/duplicate_decisions.csv`;
+- `data/derived/duplicate_candidates.json`.
+
+Veja `docs/processing_pipeline.md` e `docs/data_dictionary.md`.
+
+## Testes e verificações
+
+Antes de propor mudanças no código:
+
+```bash
+python -m pytest -q
+ruff check scripts/harvest_complete.py scripts/prepare_beacon_dataset.py scripts/process_harvest.py tests
+python -m py_compile scripts/*.py scripts/legacy/*.py tests/test_*.py
+python -m json.tool datapackage.json > /dev/null
+```
+
+A coleta completa não deve ser executada em CI.
+Os testes usam fixtures pequenas e não dependem de dados brutos locais.
+
+## Diretórios
+
+- `data/raw/`: JSONs brutos e checkpoints locais, não versionados;
+- `data/processed/`: fontes e listas processadas que podem ser versionadas;
+- `data/derived/`: consolidação e relatórios locais, não versionados;
+- `data/logs/`: logs locais, não versionados;
+- `docs/`: metodologia, proveniência e documentação;
+- `scripts/legacy/`: scripts históricos para auditoria, não para novas coletas.
+
+## Relatório ao usuário
+
+Ao concluir ou interromper uma execução, informe com dados verificados:
+
+- commit executado;
+- comando e argumentos;
+- horário de início e término;
+- fase concluída;
+- processo ainda ativo, se houver;
+- caminhos dos logs e checkpoints;
+- arquivos produzidos;
+- contagens reportadas pelos scripts;
+- erros e limitações;
+- próxima ação concreta.
+
+Se a execução falhar, informe a falha real e preserve os artefatos necessários para diagnóstico e retomada.
 
 ## Git
 
-- Branch: `main`
-- Commits: mensagens em português, concisas
-- Não commitar dados brutos (`.gitignore` já os exclui)
+- use `main` como branch base;
+- trabalhe em branch própria;
+- use mensagens de commit concisas;
+- execute os testes antes do push;
+- não faça force-push em `main`;
+- não versione dados brutos, derivados, checkpoints ou logs.
