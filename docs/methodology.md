@@ -49,7 +49,7 @@ Para cada periódico com instalação própria (1 periódico por URL OAI):
 
 ### 3. Ferramenta: ojs-scrape CLI
 
-Usamos [ojs-scrape](https://pypi.org/project/ojs-scrape/) v0.1.1 como motor de coleta, que implementa:
+Usamos [ojs-scrape](https://pypi.org/project/ojs-scrape/) v0.1.2 como motor de coleta, que implementa:
 
 - Protocolo OAI-PMH (`ListRecords` com paginação via `resumptionToken`)
 - Tratamento de caracteres de controle XML inválidos (comum em OJS 3.1.x/3.2.x)
@@ -68,7 +68,7 @@ Usamos [ojs-scrape](https://pypi.org/project/ojs-scrape/) v0.1.1 como motor de c
 | `--delay` | 1.0s (5.0s para USP) | 1.0s | Respeitar rate limiting |
 | `--format` | json | json | CSV/BibTeX podem ser gerados depois |
 | `--set` | sim (por set) | não | Sets apenas para portais |
-| `--no-verify-ssl` | sim | sim | Bypass de certificados expirados/self-signed (integrado no ojs-scrape v0.1.1+) |
+| `--no-verify-ssl` | sim | sim | Bypass de certificados expirados/self-signed (integrado no ojs-scrape v0.1.2+) |
 | PDFs | **não coletados** | **não coletados** | Escopo é metadados apenas |
 
 ### 5. Tratamento de Erros
