@@ -58,6 +58,21 @@ python3 scripts/prepare_beacon_dataset.py --download
 
 Ver `docs/data_provenance.md` para fonte, checksum e metodologia.
 
+### `scripts/process_harvest.py` — Validação e consolidação pós-coleta
+
+Consolida os JSONs brutos de `data/raw/` em saídas derivadas não versionadas.
+
+```bash
+python3 scripts/process_harvest.py --input-dir data/raw --output-dir data/derived
+```
+
+Regras centrais:
+- fusão automática apenas por DOI, `oai_identifier` ou URL canônica;
+- chave fraca de título, primeiro autor e ano gera candidatos para revisão, sem fusão automática;
+- cada registro consolidado preserva `_provenance`.
+
+Ver `docs/processing_pipeline.md`.
+
 ### Scripts legados
 
 Scripts históricos das passadas amostrais e retries foram movidos para `scripts/legacy/`.
@@ -73,6 +88,7 @@ Ver `scripts/legacy/README.md`.
 
 - **Dados brutos** em `data/raw/` — JSON individual por periódico ou set, com slug legível e hash estável da URL/set
 - **Dados processados** em `data/processed/` — dataset filtrado, listas
+- **Dados derivados** em `data/derived/` — consolidação local, não versionada
 - **Logs** em `data/logs/` — logs de execução
 - **Documentação** em `docs/` — metodologia, resultados, relatórios
 - **Não coletar PDFs** — escopo é metadados apenas

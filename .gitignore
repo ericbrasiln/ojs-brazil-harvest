@@ -6,5 +6,7 @@ venv/
 .env
 data/raw/*
 !data/raw/.gitkeep
+data/derived/*
+!data/derived/.gitkeep
 data/logs/*.log
 .ipynb_checkpoints/

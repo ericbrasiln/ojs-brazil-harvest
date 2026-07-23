@@ -53,10 +53,13 @@ Amostra de validação: ~1,169K registros brutos, ~925K únicos (38% do universo
 
 ## Fase 3: Pós-coleta
 
-- [ ] Deduplicação por ISSN (muitos registros aparecem em múltiplos sets)
-- [ ] Validação de integridade (campos obrigatórios, datas, DOIs)
-- [ ] Enriquecimento: cruzar com CrossRef, ORCID, etc.
-- [ ] Consolidar resultados de todas as fases (P1 + P2 + SSL + retry)
+- [x] Pipeline de validação e consolidação em `scripts/process_harvest.py`
+- [x] Deduplicação automática por DOI, identificador OAI e URL canônica
+- [x] Registro de candidatos por chave fraca para revisão humana
+- [x] Manifesto de execução com checksums, proveniência e relatório de validação
+- [x] Documentação FAIR inicial: `datapackage.json`, `CITATION.cff`, dicionário de dados e licença
+- [ ] Rodar consolidação completa após a coleta final no LABHDUFBA
+- [ ] Enriquecimento futuro: CrossRef, ORCID e classificação temática
 
 ## Fase 4: Publicação
 
@@ -73,5 +76,5 @@ Amostra de validação: ~1,169K registros brutos, ~925K únicos (38% do universo
 |------|-----------------|--------|
 | 1.5 — Retry erros (amostra) | Etapas 1-3 ✅ · Etapas 4-5 pendentes | 🔄 Parcial |
 | 2 — Coleta completa | 2-3 dias (máquina Lab) | ⏳ Pendente |
-| 3 — Deduplicação e validação | 2-3 dias | ⏳ Pendente |
+| 3 — Deduplicação e validação | Pipeline pronto; execução completa depende da coleta final | 🔄 Parcial |
 | 4 — Publicação | 1 semana | ⏳ Pendente |
